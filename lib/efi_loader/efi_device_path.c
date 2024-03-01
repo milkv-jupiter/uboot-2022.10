@@ -784,6 +784,18 @@ __maybe_unused static void *dp_fill(void *buf, struct udevice *dev)
 
 		return &udp[1];
 	}
+#if defined(CONFIG_SPINOR_BLOCK_SUPPORT)
+	case UCLASS_SPI_FLASH:
+	case UCLASS_SPI: {
+		struct blk_desc *desc = dev_get_uclass_plat(dev);
+		struct efi_device_path_spinor *dp = dp_fill(buf, dev->parent);
+		dp->dp.type = DEVICE_PATH_TYPE_HARDWARE_DEVICE;
+		dp->dp.sub_type = DEVICE_PATH_SUB_TYPE_MSG_SPINOR;
+		dp->dp.length = sizeof(*dp);
+		dp->device_number = desc->devnum;
+		return &dp[1];
+	}
+#endif
 	default:
 		/* If the uclass driver is missing, this will show NULL */
 		log_debug("unhandled device class: %s (%s)\n", dev->name,

@@ -1,0 +1,220 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2023 Spacemit, Inc */
+
+/dts-v1/;
+/ {
+	model = "spacemit k1-x fpga board";
+	compatible = "spacemit,k1x", "riscv";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x00000000 0x00000000 0x00000000 0x70000000>;
+		u-boot,dm-spl;
+	};
+
+	chosen {
+		bootargs = "earlycon=sbi console=ttyS0,115200 debug loglevel=8,initcall_debug=1 rdinit=/init.tmp";
+		stdout-path = "serial0:115200n8";
+		u-boot,dm-spl;
+	};
+
+	cpus: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <10000000>;
+		u-boot,dm-spl;
+		cpu_0: cpu@0 {
+			device_type = "cpu";
+			reg = <0>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt";
+			riscv,cbom-block-size = <64>;
+			mmu-type = "riscv,sv39";
+			cpu-freq = "1.848Ghz";
+			cpu-icache = "64KB";
+			cpu-dcache = "64KB";
+			cpu-l2cache = "1MB";
+			cpu-tlb = "1024 4-ways";
+			cpu-cacheline = "64Bytes";
+			cpu-vector = "0.7.1";
+			u-boot,dm-spl;
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				u-boot,dm-spl;
+			};
+		};
+		cpu_1: cpu@1 {
+			device_type = "cpu";
+			reg = <1>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt";
+			riscv,cbom-block-size = <64>;
+			mmu-type = "riscv,sv39";
+			cpu-freq = "1.848Ghz";
+			cpu-icache = "64KB";
+			cpu-dcache = "64KB";
+			cpu-l2cache = "1MB";
+			cpu-tlb = "1024 4-ways";
+			cpu-cacheline = "64Bytes";
+			cpu-vector = "0.7.1";
+			u-boot,dm-spl;
+
+			cpu1_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				u-boot,dm-spl;
+			};
+		};
+		cpu_2: cpu@2 {
+			device_type = "cpu";
+			reg = <2>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt";
+			riscv,cbom-block-size = <64>;
+			mmu-type = "riscv,sv39";
+			cpu-freq = "1.848Ghz";
+			cpu-icache = "64KB";
+			cpu-dcache = "64KB";
+			cpu-l2cache = "1MB";
+			cpu-tlb = "1024 4-ways";
+			cpu-cacheline = "64Bytes";
+			cpu-vector = "0.7.1";
+			u-boot,dm-spl;
+
+			cpu2_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				u-boot,dm-spl;
+			};
+		};
+		cpu_3: cpu@3 {
+			device_type = "cpu";
+			reg = <3>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt";
+			riscv,cbom-block-size = <64>;
+			mmu-type = "riscv,sv39";
+			cpu-freq = "1.848Ghz";
+			cpu-icache = "64KB";
+			cpu-dcache = "64KB";
+			cpu-l2cache = "1MB";
+			cpu-tlb = "1024 4-ways";
+			cpu-cacheline = "64Bytes";
+			cpu-vector = "0.7.1";
+			u-boot,dm-spl;
+
+			cpu3_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				u-boot,dm-spl;
+			};
+		};
+	};
+
+	clocks {
+		#address-cells = <0x2>;
+		#size-cells = <0x2>;
+		ranges;
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		u-boot,dm-spl;
+
+		clint0: clint@e4000000 {
+			compatible = "riscv,clint0";
+			interrupts-extended = <
+				&cpu0_intc  3 &cpu0_intc  7
+				&cpu1_intc  3 &cpu1_intc  7
+				&cpu2_intc  3 &cpu2_intc  7
+				&cpu3_intc  3 &cpu3_intc  7
+			>;
+			reg = <0x0 0xE4000000 0x0 0x00010000>;
+			clint,has-no-64bit-mmio;
+			u-boot,dm-spl;
+		};
+
+		intc: interrupt-controller@e0000000 {
+			#interrupt-cells = <1>;
+			compatible = "riscv,plic0";
+			interrupt-controller;
+			interrupts-extended = <
+				&cpu0_intc 0xffffffff &cpu0_intc 9
+				&cpu1_intc 0xffffffff &cpu1_intc 9
+				&cpu2_intc 0xffffffff &cpu2_intc 9
+				&cpu3_intc 0xffffffff &cpu3_intc 9
+			>;
+			reg = <0x0 0xE0000000 0x0 0x04000000>;
+			reg-names = "control";
+			riscv,max-priority = <7>;
+			riscv,ndev = <159>;
+		};
+
+		uart0: uart@d4017000 {
+			u-boot,dm-spl;
+			compatible = "ns16550";
+			reg = <0x00000000 0xD4017000 0x00000000 0x00000100>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			clock-frequency = <14000000>;
+			status = "okay";
+		};
+
+		ddr@c0000000 {
+			u-boot,dm-spl;
+			compatible = "spacemit,ddr-ctl";
+			reg = <0x00000000 0xC0000000 0x00000000 0x00400000>;
+		};
+
+		eth0: ethernet@cac80000 {
+			compatible = "spacemit,k1x-emac";
+			reg = <0x00000000 0xCAC80000 0x00000000 0x00000420>;
+			ctrl-reg = <0x3e4>;
+			dline-reg = <0x3e8>;
+			status = "okay";
+
+			phy-reset-pin = <40>;
+
+			clk_tuning_enable;
+			clk-tuning-by-reg;
+			tx-phase = <0x0>;
+			rx-phase = <0x1>;
+
+			phy-mode = "rgmii";
+			phy-addr = <0>;
+			phy-handle = <&rgmii>;
+
+			ref-clock-from-phy;
+
+			mdio {
+				#address-cells = <0x1>;
+				#size-cells = <0x0>;
+				rgmii: phy@0 {
+					compatible = "ethernet-phy-ieee802.3-c22";
+					device_type = "ethernet-phy";
+					reg = <0x0>;
+				};
+			};
+
+		};
+	};
+};
+

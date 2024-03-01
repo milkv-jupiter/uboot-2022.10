@@ -812,9 +812,11 @@ struct mtd_info *get_mtd_device_nm(const char *name)
 	mtd_for_each_device(other) {
 #ifdef __UBOOT__
 		if (mtd_device_matches_name(other, name)) {
-			if (mtd)
-				printf("\nWarning: MTD name \"%s\" is not unique!\n\n",
+			if (mtd){
+				pr_debug("\nWarning: MTD name \"%s\" is not unique!\n\n",
 				       name);
+			}
+
 			mtd = other;
 		}
 #else /* !__UBOOT__ */

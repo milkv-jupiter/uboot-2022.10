@@ -1,0 +1,83 @@
+/dts-v1/;
+
+/ {
+	description = "U-boot FIT image for k1x";
+	#address-cells = <2>;
+	fit,fdt-list = "of-list";
+
+	images {
+		uboot {
+			description = "U-Boot";
+			type = "standalone";
+			os = "U-Boot";
+			arch = "riscv";
+			compression = "none";
+			load = <0x0 0x00200000>;
+			data = /incbin/("../u-boot-nodtb.bin");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
+
+		fdt_1 {
+			description = "k1_evb";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_evb.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
+		fdt_2 {
+			description = "k1_deb1";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_deb1.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
+		fdt_3 {
+			description = "k1_deb2";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_deb2.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
+		fdt_4 {
+                        description = "k1_hs450";
+                        type = "flat_dt";
+                        compression = "none";
+                        data = /incbin/("../dtb/k1-x_hs450.dtb");
+                        hash-1 {
+                                algo = "crc32";
+                        };
+                };
+	};
+
+	configurations {
+		default = "conf_1";
+		conf_1 {
+			description = "k1_evb";
+			loadables = "uboot";
+			fdt = "fdt_1";
+		};
+		conf_2 {
+			description = "k1_deb1";
+			loadables = "uboot";
+			fdt = "fdt_2";
+		};
+		conf_3 {
+			description = "k1_deb2";
+			loadables = "uboot";
+			fdt = "fdt_3";
+		};
+		conf_4 {
+                        description = "k1_hs450";
+                        loadables = "uboot";
+                        fdt = "fdt_4";
+                };
+	};
+};

@@ -599,6 +599,9 @@ struct efi_device_path_acpi_path {
 #  define DEVICE_PATH_SUB_TYPE_MSG_URI		0x18
 #  define DEVICE_PATH_SUB_TYPE_MSG_SD		0x1a
 #  define DEVICE_PATH_SUB_TYPE_MSG_MMC		0x1d
+#ifdef CONFIG_SPINOR_BLOCK_SUPPORT
+#  define DEVICE_PATH_SUB_TYPE_MSG_SPINOR	0x20
+#endif
 
 struct efi_device_path_atapi {
 	struct efi_device_path dp;
@@ -665,6 +668,13 @@ struct efi_device_path_uri {
 	struct efi_device_path dp;
 	u8 uri[];
 } __packed;
+
+#ifdef CONFIG_SPINOR_BLOCK_SUPPORT
+struct efi_device_path_spinor {
+    struct efi_device_path dp;
+    uint32_t device_number;
+};
+#endif
 
 #define DEVICE_PATH_TYPE_MEDIA_DEVICE		0x04
 #  define DEVICE_PATH_SUB_TYPE_HARD_DRIVE_PATH	0x01

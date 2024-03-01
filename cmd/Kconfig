@@ -2625,4 +2625,21 @@ config MMC_SPEED_MODE_SET
 	  and is indicated using the index from enum bus_mode in
 	  include/mmc.h. A speed mode can be set only if it has already
 	  been enabled in the device tree.
+
+menu "spacemit commands"
+
+config SPACEMIT_FLASH
+	bool "enable spacemit flash behavior"
+	default n
+	help
+	  enable spacemit flash behavior, use for flashing function.
+
+config SPL_FASTBOOT
+	bool "Enable SPL Fastboot Mode"
+	default n
+	help
+	  Enable this option to enable fastboot in spl
+
+endmenu
+
 endmenu
