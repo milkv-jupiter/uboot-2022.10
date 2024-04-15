@@ -153,6 +153,64 @@ struct spacemit_reset {
 	const struct spacemit_reset_signal *signals;
 };
 
+enum {
+	RESET_TWSI6_SPL = 0,
+	RESET_TWSI8_SPL,
+	RESET_SDH_AXI_SPL,
+	RESET_SDH0_SPL,
+	RESET_USB_AXI_SPL,
+	RESET_USBP1_AXI_SPL,
+	RESET_USB3_0_SPL,
+	RESET_QSPI_SPL,
+	RESET_QSPI_BUS_SPL,
+	RESET_AES_SPL,
+	RESET_SDH2_SPL,
+	RESET_NUMBER_SPL,
+};
+
+#ifdef CONFIG_SPL_BUILD
+static u32 transfer_to_spl_list[][2] = {
+	{RESET_TWSI6, RESET_TWSI6_SPL},
+	{RESET_TWSI8, RESET_TWSI8_SPL},
+	{RESET_SDH_AXI, RESET_SDH_AXI_SPL},
+	{RESET_SDH0, RESET_SDH0_SPL},
+	{RESET_USB_AXI, RESET_USB_AXI_SPL},
+	{RESET_USBP1_AXI, RESET_USBP1_AXI_SPL},
+	{RESET_USB3_0, RESET_USB3_0_SPL},
+	{RESET_QSPI, RESET_QSPI_SPL},
+	{RESET_QSPI_BUS, RESET_QSPI_BUS_SPL},
+	{RESET_SDH2, RESET_SDH2_SPL},
+	{RESET_AES, RESET_AES_SPL},
+};
+
+static const struct spacemit_reset_signal
+	k1x_reset_signals[RESET_NUMBER_SPL] = {
+	[RESET_TWSI6_SPL]   = { APBC_TWSI6_CLK_RST, BIT(2), 0, BIT(2), RST_BASE_TYPE_APBC },
+	[RESET_TWSI8_SPL]   = { APBC_TWSI8_CLK_RST, BIT(2), 0, BIT(2), RST_BASE_TYPE_APBC },
+	[RESET_SDH_AXI_SPL]     = { APMU_SDH0_CLK_RES_CTRL, BIT(0), BIT(0), 0, RST_BASE_TYPE_APMU },
+	[RESET_SDH0_SPL]      = { APMU_SDH0_CLK_RES_CTRL, BIT(1), BIT(1), 0, RST_BASE_TYPE_APMU },
+	[RESET_USB_AXI_SPL]   = { APMU_USB_CLK_RES_CTRL, BIT(0), BIT(0), 0, RST_BASE_TYPE_APMU },
+	[RESET_USBP1_AXI_SPL] = { APMU_USB_CLK_RES_CTRL, BIT(4), BIT(4), 0, RST_BASE_TYPE_APMU },
+	[RESET_USB3_0_SPL]    = { APMU_USB_CLK_RES_CTRL, BIT(9)|BIT(10)|BIT(11), BIT(9)|BIT(10)|BIT(11), 0, RST_BASE_TYPE_APMU },
+	[RESET_QSPI_SPL]  = { APMU_QSPI_CLK_RES_CTRL, BIT(1), BIT(1), 0, RST_BASE_TYPE_APMU },
+	[RESET_QSPI_BUS_SPL]  = { APMU_QSPI_CLK_RES_CTRL, BIT(0), BIT(0), 0, RST_BASE_TYPE_APMU },
+	[RESET_SDH2_SPL] = { APMU_SDH2_CLK_RES_CTRL, BIT(1), BIT(1), 0, RST_BASE_TYPE_APMU },
+	[RESET_AES_SPL]	 = { APMU_AES_CLK_RES_CTRL, BIT(4), BIT(4), 0, RST_BASE_TYPE_APMU },
+	};
+
+static u32 transfer_reset_id_to_spl(u32 id)
+{
+	u32 listsize = ARRAY_SIZE(transfer_to_spl_list);
+
+	for (int i = 0; i < listsize; i++){
+		if (id == transfer_to_spl_list[i][0]){
+			pr_info("id:%d, %d,\n", id, transfer_to_spl_list[i][1]);
+			return transfer_to_spl_list[i][1];
+		}
+	}
+	return id;
+}
+#else
 static const struct spacemit_reset_signal
 	k1x_reset_signals[RESET_NUMBER] = {
 	[RESET_UART1]   = { APBC_UART1_CLK_RST, BIT(2), 0, BIT(2), RST_BASE_TYPE_APBC },
@@ -257,46 +315,48 @@ static const struct spacemit_reset_signal
 	[RESET_SEC_TIMERS0] 	= { APBC2_TIMERS0_CLK_RST, BIT(2), 0, BIT(2), RST_BASE_TYPE_APBC2 },
 	[RESET_SEC_KPC] 	= { APBC2_KPC_CLK_RST, BIT(2), 0, BIT(2), RST_BASE_TYPE_APBC2 },
 	[RESET_SEC_GPIO] 	= { APBC2_GPIO_CLK_RST, BIT(2), 0, BIT(2), RST_BASE_TYPE_APBC2 },
-};
+	};
+#endif
+
 
 static u32 spacemit_reset_read(struct spacemit_reset *reset,
 	u32 id)
 {
 	void __iomem *base;
 	switch(reset->signals[id].type){
-		case RST_BASE_TYPE_MPMU:
-			base = reset->mpmu_base;
-			break;
-		case RST_BASE_TYPE_APMU:
-			base = reset->apmu_base;
-			break;
-		case RST_BASE_TYPE_APBC:
-			base = reset->apbc_base;
-			break;
-		case RST_BASE_TYPE_APBS:
-			base = reset->apbs_base;
-			break;
-		case RST_BASE_TYPE_CIU:
-			base = reset->ciu_base;
-			break;
-		case RST_BASE_TYPE_DCIU:
-			base = reset->dciu_base;
-			break;
-		case RST_BASE_TYPE_DDRC:
-			base = reset->ddrc_base;
-			break;
-		case RST_BASE_TYPE_AUDC:
-			base = reset->audio_ctrl_base;
-			break;
-		case RST_BASE_TYPE_APBC2:
-			base = reset->apbc2_base;
-			break;
-		default:
-			base = reset->apbc_base;
-			break;
-
+	case RST_BASE_TYPE_APMU:
+		base = reset->apmu_base;
+		break;
+	case RST_BASE_TYPE_APBC:
+		base = reset->apbc_base;
+		break;
+#ifndef CONFIG_SPL_BUILD
+	case RST_BASE_TYPE_MPMU:
+		base = reset->mpmu_base;
+		break;
+	case RST_BASE_TYPE_APBS:
+		base = reset->apbs_base;
+		break;
+	case RST_BASE_TYPE_CIU:
+		base = reset->ciu_base;
+		break;
+	case RST_BASE_TYPE_DCIU:
+		base = reset->dciu_base;
+		break;
+	case RST_BASE_TYPE_DDRC:
+		base = reset->ddrc_base;
+		break;
+	case RST_BASE_TYPE_AUDC:
+		base = reset->audio_ctrl_base;
+		break;
+	case RST_BASE_TYPE_APBC2:
+		base = reset->apbc2_base;
+		break;
+#endif
+	default:
+		base = reset->apbc_base;
+		break;
 	}
-
 	return readl(base + reset->signals[id].offset);
 }
 
@@ -304,39 +364,41 @@ static void spacemit_reset_write(struct spacemit_reset *reset, u32 value,
 	u32 id)
 {
 	void __iomem *base;
-	switch(reset->signals[id].type){
-		case RST_BASE_TYPE_MPMU:
-			base = reset->mpmu_base;
-			break;
-		case RST_BASE_TYPE_APMU:
-			base = reset->apmu_base;
-			break;
-		case RST_BASE_TYPE_APBC:
-			base = reset->apbc_base;
-			break;
-		case RST_BASE_TYPE_APBS:
-			base = reset->apbs_base;
-			break;
-		case RST_BASE_TYPE_CIU:
-			base = reset->ciu_base;
-			break;
-		case RST_BASE_TYPE_DCIU:
-			base = reset->dciu_base;
-			break;
-		case RST_BASE_TYPE_DDRC:
-			base = reset->ddrc_base;
-			break;
-		case RST_BASE_TYPE_AUDC:
-			base = reset->audio_ctrl_base;
-			break;
-		case RST_BASE_TYPE_APBC2:
-			base = reset->apbc2_base;
-			break;
-		default:
-			base = reset->apbc_base;
-			break;
-
+	switch (reset->signals[id].type) {
+	case RST_BASE_TYPE_APMU:
+		base = reset->apmu_base;
+		break;
+	case RST_BASE_TYPE_APBC:
+		base = reset->apbc_base;
+		break;
+#ifndef CONFIG_SPL_BUILD
+	case RST_BASE_TYPE_MPMU:
+		base = reset->mpmu_base;
+		break;
+	case RST_BASE_TYPE_APBS:
+		base = reset->apbs_base;
+		break;
+	case RST_BASE_TYPE_CIU:
+		base = reset->ciu_base;
+		break;
+	case RST_BASE_TYPE_DCIU:
+		base = reset->dciu_base;
+		break;
+	case RST_BASE_TYPE_DDRC:
+		base = reset->ddrc_base;
+		break;
+	case RST_BASE_TYPE_AUDC:
+		base = reset->audio_ctrl_base;
+		break;
+	case RST_BASE_TYPE_APBC2:
+		base = reset->apbc2_base;
+		break;
+#endif
+	default:
+		base = reset->apbc_base;
+		break;
 	}
+
 	writel(value, base + reset->signals[id].offset);
 }
 
@@ -351,26 +413,34 @@ static void spacemit_reset_set(struct reset_ctl *rst,
 	if(assert == true) {
 		value &= ~ reset->signals[id].mask;
 		value |=reset->signals[id].assert_val;
-
 	} else {
 		value &= ~reset->signals[id].mask;
 		value |= reset->signals[id].deassert_val;
 	}
+
 	spacemit_reset_write(reset, value, id);
 }
 
 static int spacemit_reset_update(struct reset_ctl *rst, bool assert)
 {
+#ifdef CONFIG_SPL_BUILD
+	rst->id = transfer_reset_id_to_spl(rst->id);
+	if(rst->id < RESET_TWSI6_SPL || rst->id >= RESET_NUMBER_SPL)
+		return 0;
+
+	/* can not write to twsi8*/
+	if (rst->id == RESET_TWSI8_SPL)
+		return 0;
+#else
 	if(rst->id < RESET_UART1 || rst->id >= RESET_NUMBER)
 		return 0;
+
+	/* can not write to twsi8*/
 	if (rst->id == RESET_TWSI8)
 		return 0;
-	if(assert == true){
-		spacemit_reset_set(rst, rst->id, assert);
-	}
-	else{
-		spacemit_reset_set(rst, rst->id, assert);
-	}
+#endif
+
+	spacemit_reset_set(rst, rst->id, assert);
 	return 0;
 }
 
@@ -461,4 +531,3 @@ U_BOOT_DRIVER(k1x_reset) = {
 	.probe		= spacemit_k1x_reset_probe,
 	.priv_auto	= sizeof(struct spacemit_reset),
 };
-

@@ -11,14 +11,7 @@
 / {
 	model = "spacemit k1-x spl";
 
-	memory@0 {
-		device_type = "memory";
-		reg = <0x00000000 0x00000000 0x00000000 0x80000000>;
-		u-boot,dm-spl;
-	};
-
 	chosen {
-		bootargs = "earlycon=sbi console=ttyS0,115200 debug loglevel=8,initcall_debug=1 rdinit=/init.tmp";
 		stdout-path = "serial0:115200n8";
 		u-boot,dm-spl;
 	};
@@ -108,25 +101,6 @@
 		sdh-phy-module = <1>;
 		status = "okay";
 		u-boot,dm-spl;
-	};
-
-	twsi6@d4018800 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c6_1>;
-		status = "okay";
-		u-boot,dm-spl;
-
-		eeprom@50{
-			compatible = "atmel,24c02";
-			u-boot,dm-spl;
-			reg = <0x50>;
-			bus = <6>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			status = "okay";
-		};
 	};
 
 	spi@d420c000 {

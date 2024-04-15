@@ -51,7 +51,7 @@ int riscv_fdt_copy_resv_mem_node(const void *src, void *dst)
 	 */
 	err = fdt_open_into(dst, dst, fdt_totalsize(dst) + 1024);
 	if (err < 0) {
-		printf("Device Tree can't be expanded to accommodate new node");
+		pr_info("Device Tree can't be expanded to accommodate new node");
 		return err;
 	}
 
@@ -213,6 +213,9 @@ int arch_fixup_fdt(void *blob)
 	} while(nodeoffset >= 0);
 
 	for (int bank_index = CONFIG_NR_DRAM_BANKS - 1; bank_index >= 0; bank_index--){
+		if (0 == gd->bd->bi_dram[bank_index].size)
+			continue;
+
 		memset(memstart, 0, 32);
 		sprintf(memstart, "memory@%llx", gd->bd->bi_dram[bank_index].start);
 
@@ -224,7 +227,7 @@ int arch_fixup_fdt(void *blob)
 		err = fdt_setprop(blob, nodeoffset, "device_type", "memory",
 				sizeof("memory"));
 		if (err < 0) {
-			printf("WARNING: could not set %s %s.\n", "device_type",
+			pr_info("WARNING: could not set %s %s.\n", "device_type",
 					fdt_strerror(err));
 			return err;
 		}
@@ -233,7 +236,7 @@ int arch_fixup_fdt(void *blob)
 
 		err = fdt_setprop(blob, nodeoffset, "reg", tmp, len);
 		if (err < 0) {
-			printf("WARNING: could not set %s %s.\n",
+			pr_info("WARNING: could not set %s %s.\n",
 					"reg", fdt_strerror(err));
 			return err;
 		}

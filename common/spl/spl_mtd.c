@@ -30,7 +30,7 @@ static bool mtd_is_aligned_with_block_size(struct mtd_info *mtd, u64 size)
 	return !do_div(size, mtd->erasesize);
 }
 
-static int spl_mtd_read(struct mtd_info *mtd, ulong sector, ulong count, void *buf)
+int spl_mtd_read(struct mtd_info *mtd, ulong sector, ulong count, void *buf)
 {
 	bool read, raw, woob, has_pages = false;
 	u64 start_off, off, len, remaining;

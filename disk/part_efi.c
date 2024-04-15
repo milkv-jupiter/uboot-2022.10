@@ -229,28 +229,28 @@ void part_print_efi(struct blk_desc *dev_desc)
 
 	debug("%s: gpt-entry at %p\n", __func__, gpt_pte);
 
-	pr_debug("Part\tStart LBA\tEnd LBA\t\tName\n");
-	pr_debug("\tAttributes\n");
-	pr_debug("\tType GUID\n");
-	pr_debug("\tPartition GUID\n");
+	pr_info("Part\tStart LBA\tEnd LBA\t\tName\n");
+	pr_info("\tAttributes\n");
+	pr_info("\tType GUID\n");
+	pr_info("\tPartition GUID\n");
 
 	for (i = 0; i < le32_to_cpu(gpt_head->num_partition_entries); i++) {
 		/* Skip invalid PTE */
 		if (!is_pte_valid(&gpt_pte[i]))
 			continue;
 
-		pr_debug("%3d\t0x%08llx\t0x%08llx\t\"%s\"\n", (i + 1),
+		pr_info("%3d\t0x%08llx\t0x%08llx\t\"%s\"\n", (i + 1),
 			le64_to_cpu(gpt_pte[i].starting_lba),
 			le64_to_cpu(gpt_pte[i].ending_lba),
 			print_efiname(&gpt_pte[i]));
-		pr_debug("\tattrs:\t0x%016llx\n", gpt_pte[i].attributes.raw);
+		pr_info("\tattrs:\t0x%016llx\n", gpt_pte[i].attributes.raw);
 		uuid = (unsigned char *)gpt_pte[i].partition_type_guid.b;
 		if (CONFIG_IS_ENABLED(PARTITION_TYPE_GUID))
-			pr_debug("\ttype:\t%pUl\n\t\t(%pUs)\n", uuid, uuid);
+			pr_info("\ttype:\t%pUl\n\t\t(%pUs)\n", uuid, uuid);
 		else
-			pr_debug("\ttype:\t%pUl\n", uuid);
+			pr_info("\ttype:\t%pUl\n", uuid);
 		uuid = (unsigned char *)gpt_pte[i].unique_partition_guid.b;
-		pr_debug("\tguid:\t%pUl\n", uuid);
+		pr_info("\tguid:\t%pUl\n", uuid);
 	}
 
 	/* Remember to free pte */

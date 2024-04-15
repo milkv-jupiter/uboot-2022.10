@@ -78,7 +78,13 @@ static struct class mtd_class = {
 	.resume = mtd_cls_resume,
 };
 #else
+
+#if defined (CONFIG_SPL_BUILD)
+// NO need to support so many MTD partition during SPL stage
+#define MAX_IDR_ID	16
+#else
 #define MAX_IDR_ID	64
+#endif
 
 struct idr_layer {
 	int	used;
@@ -146,7 +152,17 @@ int idr_alloc(struct idr *idp, void *ptr, int start, int end, gfp_t gfp_mask)
 }
 #endif
 
+
+#if defined (CONFIG_SPL_BUILD)
+// change mtd idr item data from bss to data section, otherwise it will be memset
+// and cause mtd partition parse fail in below scenario
+// board_init_f: mtd_probe_devices, get_mtd_device_nm
+// bss section memset
+// board_init_r: mtd_probe_devices(bypass), get_mtd_device_nm(FAIL)
+__section(".data.mtd_idr") static DEFINE_IDR(mtd_idr);
+#else
 static DEFINE_IDR(mtd_idr);
+#endif
 
 /* These are exported solely for the purpose of mtd_blkdevs.c. You
    should not use them for _anything_ else */

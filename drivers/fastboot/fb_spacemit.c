@@ -95,17 +95,16 @@ static int _write_gpt_partition(struct flash_dev *fdev, char *response)
 	return 0;
 }
 
-int _update_partinfo_to_env(void *download_buffer, u32 download_bytes,
+int _clear_env_part(void *download_buffer, u32 download_bytes,
 								 struct flash_dev *fdev)
 {
 	u32 boot_mode = get_boot_pin_select();
-	char cmdbuf[64] = {"\0"};
 
-
-	sprintf(cmdbuf, "env export -c -s 0x%lx 0x%lx", (ulong)CONFIG_ENV_SIZE, (ulong)download_buffer);
-	if (run_command(cmdbuf, 0)){
-		return -1;
-	}
+	/* char cmdbuf[64] = {"\0"}; */
+	/* sprintf(cmdbuf, "env export -c -s 0x%lx 0x%lx", (ulong)CONFIG_ENV_SIZE, (ulong)download_buffer); */
+	/* if (run_command(cmdbuf, 0)){ */
+	/* 	return -1; */
+	/* } */
 
 	switch(boot_mode){
 #ifdef CONFIG_ENV_IS_IN_MMC
@@ -113,7 +112,9 @@ int _update_partinfo_to_env(void *download_buffer, u32 download_bytes,
 	case BOOT_MODE_SD:
 		/*write to emmc default offset*/
 		debug("write env to mmc offset:%lx\n", (ulong)FLASH_ENV_OFFSET_MMC);
-		//maybe it could just use env save command
+
+		/*should not write env to env part*/
+		memset(download_buffer, 0, CONFIG_ENV_SIZE);
 		fastboot_mmc_flash_offset((u32)FLASH_ENV_OFFSET_MMC, download_buffer, (u32)CONFIG_ENV_SIZE);
 		break;
 #endif
@@ -136,10 +137,12 @@ int _update_partinfo_to_env(void *download_buffer, u32 download_bytes,
 			ret = _fb_mtd_erase(mtd, CONFIG_ENV_SIZE);
 			if (ret)
 				return -1;
-			ret = _fb_mtd_write(mtd, download_buffer, 0, CONFIG_ENV_SIZE, NULL);
-			if (ret){
-				pr_err("can not write env to mtd flash\n");
-			}
+
+			/*should not write env to env part*/
+			/* ret = _fb_mtd_write(mtd, download_buffer, 0, CONFIG_ENV_SIZE, NULL); */
+			/* if (ret){ */
+			/* 	pr_err("can not write env to mtd flash\n"); */
+			/* } */
 		}
 		break;
 #endif
@@ -302,6 +305,24 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr)
 			else
 				node_file = "";
 
+			cJSON *cj_volume_images = cJSON_GetObjectItem(arraypart, "volume_images");
+			if (cj_volume_images) {
+				int volume_count = cJSON_GetArraySize(cj_volume_images);
+				fdev->parts_info[part_index].volume_images = malloc(volume_count * sizeof(struct flash_volume_image));
+				fdev->parts_info[part_index].volume_images_count = volume_count;
+
+				int volume_index = 0;
+				cJSON *cj_volume_image = NULL;
+				cJSON_ArrayForEach(cj_volume_image, cj_volume_images) {
+					const char *volume_name = cj_volume_image->string;
+					const char *image_file = cj_volume_image->valuestring;
+
+					fdev->parts_info[part_index].volume_images[volume_index].name = strdup(volume_name);
+					fdev->parts_info[part_index].volume_images[volume_index].file_name = strdup(image_file);
+					volume_index++;
+				}
+			}
+
 			cJSON *cj_offset = cJSON_GetObjectItem(arraypart, "offset");
 			if (cj_offset && cj_offset->type == cJSON_String)
 				node_offset = cj_offset->valuestring;
@@ -385,9 +406,14 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr)
 				}
 			}
 
-			pr_info("part info %s, %s\n", \
-				fdev->parts_info[part_index].part_name, \
-				fdev->parts_info[part_index].file_name);
+			pr_info("Part info: %s, %s\n", fdev->parts_info[part_index].part_name, fdev->parts_info[part_index].file_name ? fdev->parts_info[part_index].file_name : "None");
+			if (fdev->parts_info[part_index].volume_images_count > 0) {
+				for (int j = 0; j < fdev->parts_info[part_index].volume_images_count; j++) {
+					pr_info("Volume name: %s, Image file: %s\n",
+						fdev->parts_info[part_index].volume_images[j].name,
+						fdev->parts_info[part_index].volume_images[j].file_name);
+				}
+			}
 			part_index++;
 		}
 	}else{
@@ -443,8 +469,8 @@ void fastboot_oem_flash_gpt(const char *cmd, void *download_buffer, u32 download
 	}
 
 	/*set partition to env*/
-	if (_update_partinfo_to_env(download_buffer, download_bytes, fdev)){
-		fastboot_fail("update part info to env fail", response);
+	if (_clear_env_part(download_buffer, download_bytes, fdev)){
+		fastboot_fail("clear env fail", response);
 		return;
 	}
 
@@ -481,8 +507,8 @@ void fastboot_oem_flash_env(const char *cmd, void *download_buffer, u32 download
 		}
 	}
 
-	if (_update_partinfo_to_env(download_buffer, download_bytes, fdev)){
-		fastboot_fail("update part info to env fail", response);
+	if (_clear_env_part(download_buffer, download_bytes, fdev)){
+		fastboot_fail("clear env fail", response);
 		return;
 	}
 
@@ -541,7 +567,7 @@ int flash_mmc_boot_op(struct blk_desc *dev_desc, void *buffer,
 	}
 
 	if (buffer) { /* flash */
-		pr_debug("%s, %p\n", __func__, buffer);
+		pr_info("%s, %p\n", __func__, buffer);
 		/* determine number of blocks to write */
 		blksz = dev_desc->blksz;
 		blkcnt = ((buff_sz + (blksz - 1)) & ~(blksz - 1));
@@ -565,7 +591,7 @@ int flash_mmc_boot_op(struct blk_desc *dev_desc, void *buffer,
 			return -1;
 		}
 
-		pr_debug("........ wrote %lu bytes to EMMC_BOOT%d\n",
+		pr_info("........ wrote %lu bytes to EMMC_BOOT%d\n",
 			   blkcnt * blksz, hwpart);
 	}
 
@@ -614,24 +640,74 @@ int fastboot_mmc_flash_offset(u32 start_offset, void *download_buffer,
 			return -1;
 	}
 
-	pr_debug("........ wrote 0x%lx sector bytes to blk offset 0x%lx\n", blkcnt, info.start);
+	pr_info("........ wrote 0x%lx sector bytes to blk offset 0x%lx\n", blkcnt, info.start);
 #endif
 	return 0;
 }
 
-int check_blk_image_crc(struct blk_desc *dev_desc, ulong crc_compare, lbaint_t part_start_cnt,
-			ulong blksz, int image_size)
+
+u64 checksum64(u64 *baseaddr, u64 size)
+{
+	u64 sum = 0;
+	u64 i, cachelines;
+	u64 dwords, bytes;
+	u8 *data;
+
+	// each cache line has 64bytes
+	cachelines = size / 64;
+	bytes = size % 64;
+	dwords = bytes / 8;
+	bytes = bytes % 8;
+
+	for (i = 0; i < cachelines; i++) {
+		u64 val1 = *(baseaddr + 0);
+		u64 val2 = *(baseaddr + 1);
+		u64 val3 = *(baseaddr + 2);
+		u64 val4 = *(baseaddr + 3);
+		u64 val5 = *(baseaddr + 4);
+		u64 val6 = *(baseaddr + 5);
+		u64 val7 = *(baseaddr + 6);
+		u64 val8 = *(baseaddr + 7);
+
+		sum += val1;
+		sum += val2;
+		sum += val3;
+		sum += val4;
+		sum += val5;
+		sum += val6;
+		sum += val7;
+		sum += val8;
+		baseaddr += 8;
+	}
+
+	/*calculate the rest of dowrd*/
+	for (i = 0; i < dwords; i++) {
+		sum += *baseaddr;
+		baseaddr++;
+	}
+
+	data = (u8*)baseaddr;
+	/*calculate the rest of byte*/
+	for (i = 0; i < bytes; i++) {
+		sum += data[i];
+	}
+
+	return sum;
+}
+
+int compare_blk_image_val(struct blk_desc *dev_desc, u64 compare_val, lbaint_t part_start_cnt,
+			ulong blksz, uint64_t image_size)
 {
 	void *load_addr = (void *)map_sysmem(RECOVERY_LOAD_IMG_ADDR, 0);
 	u32 div_times = (image_size + RECOVERY_LOAD_IMG_SIZE - 1) / RECOVERY_LOAD_IMG_SIZE;
-	ulong crc = 0;
-	int byte_remain = image_size;
-	int download_bytes = 0;
+	u64 calculate = 0;
+	uint64_t byte_remain = image_size;
+	uint64_t download_bytes = 0;
 	u32 blk_size, n;
 	unsigned long time_start_flash = get_timer(0);
 
-	/*if crc_compare is 0, return 0 directly*/
-	if (!crc_compare)
+	/*if compare_val is 0, return 0 directly*/
+	if (!compare_val)
 		return 0;
 
 	if (!dev_desc || dev_desc->type == DEV_TYPE_UNKNOWN) {
@@ -640,7 +716,7 @@ int check_blk_image_crc(struct blk_desc *dev_desc, ulong crc_compare, lbaint_t p
 	}
 
 	for (int i = 0; i < div_times; i++) {
-		debug("\ndownload and flash div %d\n", i);
+		pr_info("\ndownload and flash div %d\n", i);
 		download_bytes = byte_remain > RECOVERY_LOAD_IMG_SIZE ? RECOVERY_LOAD_IMG_SIZE : byte_remain;
 
 		blk_size = (download_bytes + (blksz - 1)) / blksz;
@@ -649,36 +725,39 @@ int check_blk_image_crc(struct blk_desc *dev_desc, ulong crc_compare, lbaint_t p
 			pr_err("mmc read blk not equal it should be\n");
 			return -1;
 		}
-		crc = crc32_wd(crc, (const uchar *)load_addr, download_bytes, CHUNKSZ_CRC32);
+		// calculate = crc32_wd(crc, (const uchar *)load_addr, download_bytes, CHUNKSZ_CRC32);
+		calculate += checksum64(load_addr, download_bytes);
+
 		part_start_cnt += blk_size;
 		byte_remain -= download_bytes;
 	}
 
-	pr_debug("get crc value:%lx, compare crc:%lx\n", crc, crc_compare);
+	pr_info("get calculate value:%llx, compare calculate:%llx\n", calculate, compare_val);
 	time_start_flash = get_timer(time_start_flash);
-	pr_debug("compare crc32 over, use time:%lu ms\n\n", time_start_flash);
-	return (crc == crc_compare) ? 0 : -1;
+	pr_info("\ncompare over, use time:%lu ms\n\n", time_start_flash);
+	return (calculate == compare_val) ? 0 : -1;
 }
 
-int check_mtd_image_crc(struct mtd_info *mtd, ulong crc_compare, int image_size)
+
+int compare_mtd_image_val(struct mtd_info *mtd, u64 compare_val, uint64_t image_size)
 {
 	void *load_addr = (void *)map_sysmem(RECOVERY_LOAD_IMG_ADDR, 0);
 	u32 div_times = (image_size + RECOVERY_LOAD_IMG_SIZE - 1) / RECOVERY_LOAD_IMG_SIZE;
-	ulong crc = 0;
-	int byte_remain = image_size;
-	int download_bytes = 0;
+	u64 calculate = 0;
+	uint64_t byte_remain = image_size;
+	uint64_t download_bytes = 0;
 	u32 hdr_off = 0;
 	int ret;
 
-	debug("mtd size:%llx, image_size:%x\n", mtd->size, image_size);
+	debug("mtd size:%llx, image_size:%llx\n", mtd->size, image_size);
 	unsigned long time_start_flash = get_timer(0);
 
-	/*if crc_compare is 0, return 0 directly*/
-	if (!crc_compare)
+	/*if compare_val is 0, return 0 directly*/
+	if (!compare_val)
 		return 0;
 
 	for (int i = 0; i < div_times; i++) {
-		debug("\ndownload and flash div %d\n", i);
+		pr_info("\ndownload and flash div %d\n", i);
 		download_bytes = byte_remain > RECOVERY_LOAD_IMG_SIZE ? RECOVERY_LOAD_IMG_SIZE : byte_remain;
 		ret = _fb_mtd_read(mtd, load_addr, hdr_off, download_bytes, NULL);
 		if (ret){
@@ -686,15 +765,16 @@ int check_mtd_image_crc(struct mtd_info *mtd, ulong crc_compare, int image_size)
 			return -1;
 		}
 
-		crc = crc32_wd(crc, (const uchar *)load_addr, download_bytes, CHUNKSZ_CRC32);
+		// calculate = crc32_wd(calculate, (const uchar *)load_addr, download_bytes, CHUNKSZ_CRC32);
+		calculate += checksum64(load_addr, download_bytes);
 		hdr_off += download_bytes;
 		byte_remain -= download_bytes;
 	}
 
-	pr_debug("get crc value:%lx, compare crc:%lx\n", crc, crc_compare);
+	pr_info("get calculate value:%llx, compare calculate:%llx\n", calculate, compare_val);
 	time_start_flash = get_timer(time_start_flash);
-	pr_debug("compare crc32 over, use time:%lu ms\n\n", time_start_flash);
-	return (crc == crc_compare) ? 0 : -1;
+	pr_info("compare over, use time:%lu ms\n\n", time_start_flash);
+	return (calculate == compare_val) ? 0 : -1;
 }
 
 

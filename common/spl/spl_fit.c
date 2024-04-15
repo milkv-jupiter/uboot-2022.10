@@ -545,7 +545,7 @@ static void *spl_get_fit_load_buffer(size_t size)
 {
 	void *buf;
 
-	buf = malloc(size);
+	buf = memalign(ARCH_DMA_MINALIGN, size);
 	if (!buf) {
 		pr_err("Could not get FIT buffer of %lu bytes\n", (ulong)size);
 		pr_err("\tcheck CONFIG_SYS_SPL_MALLOC_SIZE\n");

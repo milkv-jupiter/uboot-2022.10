@@ -169,7 +169,7 @@ static int mtd_del_parts(struct mtd_info *mtd, bool quiet)
 	/* do not delete partitions if they are in use. */
 	if (mtd_partitions_used(mtd)) {
 		if (!quiet){
-			pr_debug("\"%s\" partitions still in use, can't delete them\n",
+			pr_info("\"%s\" partitions still in use, can't delete them\n",
 			       mtd->name);
 		}
 		return -EACCES;
@@ -235,13 +235,13 @@ static int parse_mtdparts(const char *mtdparts, const char *mtdids)
 			colon = NULL;
 
 		if (!colon) {
-			pr_debug("Wrong mtdparts: %s\n", mtdparts);
+			pr_info("Wrong mtdparts: %s\n", mtdparts);
 			return -EINVAL;
 		}
 
 		mtd_name_len = (unsigned int)(colon - mtdparts);
 		if (mtd_name_len + 1 > sizeof(mtd_name)) {
-			pr_debug("MTD name too long: %s\n", mtdparts);
+			pr_info("MTD name too long: %s\n", mtdparts);
 			return -EINVAL;
 		}
 
@@ -269,7 +269,7 @@ static int parse_mtdparts(const char *mtdparts, const char *mtdids)
 			 * pointer forward until the next set of partitions.
 			 */
 			if (ret || IS_ERR_OR_NULL(mtd)) {
-				pr_debug("Could not find a valid device for %s\n",
+				pr_info("Could not find a valid device for %s\n",
 				       mtd_name);
 				mtdparts = mtdparts_next;
 				continue;
@@ -294,7 +294,7 @@ static int parse_mtdparts(const char *mtdparts, const char *mtdids)
 		 */
 		ret = mtd_parse_partitions(mtd, &mtdparts, &parts, &nparts);
 		if (ret) {
-			pr_debug("Could not parse device %s\n", mtd->name);
+			pr_info("Could not parse device %s\n", mtd->name);
 			put_mtd_device(mtd);
 			return -EINVAL;
 		}
@@ -360,7 +360,7 @@ int mtd_probe_devices(void)
 	/* If both mtdparts and mtdids are non-empty, parse */
 	if (mtdparts && mtdids) {
 		if (parse_mtdparts(mtdparts, mtdids) < 0){
-			pr_debug("Failed parsing MTD partitions from mtdparts!\n");
+			pr_info("Failed parsing MTD partitions from mtdparts!\n");
 		}
 	}
 
@@ -368,7 +368,7 @@ int mtd_probe_devices(void)
 	mtd_for_each_device(mtd) {
 		if (list_empty(&mtd->partitions)) {
 			if (add_mtd_partitions_of(mtd) < 0){
-				pr_debug("Failed parsing MTD %s OF partitions!\n",
+				pr_info("Failed parsing MTD %s OF partitions!\n",
 					mtd->name);
 			}
 		}

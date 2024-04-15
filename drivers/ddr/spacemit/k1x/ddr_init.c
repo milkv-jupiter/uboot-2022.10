@@ -12,13 +12,11 @@
 #include <init.h>
 #include <log.h>
 #include <ram.h>
-#include <cpu.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm/device_compat.h>
 #include <linux/sizes.h>
-#include <dt-bindings/soc/spacemit-k1x.h>
 #ifdef CONFIG_K1_X_BOARD_FPGA
 #include "ddr_init_fpga.h"
 #endif
@@ -66,7 +64,7 @@ static int test_pattern(fdt_addr_t base, fdt_size_t size)
 	for (addr = base; addr < base + size; addr += DDR_CHECK_STEP) {
 		for (offset = 0; offset < DDR_CHECK_CNT; offset += 4) {
 			if (readl((void*)addr + offset) != (uint32_t)(addr + offset)) {
-				pr_debug("ddr check error %x vs %x\n", (uint32_t)(addr + offset), readl((void*)addr + offset));
+				pr_err("ddr check error %x vs %x\n", (uint32_t)(addr + offset), readl((void*)addr + offset));
 				err++;
 				if (err > 10)
 					goto ERR_HANDLE;
@@ -87,7 +85,7 @@ static int test_pattern(fdt_addr_t base, fdt_size_t size)
 	for (addr = base; addr < base + size; addr += DDR_CHECK_STEP) {
 		for (offset = 0; offset < DDR_CHECK_CNT; offset += 4) {
 			if (readl((void*)addr + offset) != (~(uint32_t)(addr + offset))) {
-				pr_debug("ddr check error %x vs %x\n", (uint32_t)(~(addr + offset)), readl((void*)addr + offset));
+				pr_err("ddr check error %x vs %x\n", (uint32_t)(~(addr + offset)), readl((void*)addr + offset));
 				err++;
 				if (err > 10)
 					goto ERR_HANDLE;
@@ -105,7 +103,7 @@ ERR_HANDLE:
 		}
 	}
 	if (err != 0) {
-		log_err("dram pattern test failed!\n");
+		pr_emerg("dram pattern test failed!\n");
 	}
 
 	free(ddr_data);
@@ -117,43 +115,6 @@ ERR_HANDLE:
 extern void lpddr4_silicon_init(uint32_t base, uint32_t data_rate);
 #endif
 
-static uint32_t adjust_cpu_freq(uint64_t cluster, uint32_t freq)
-{
-	uint32_t freq_act=freq, val;
-
-	/* switch cpu clock source */
-	val = readl((void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
-	val &= ~(0x07 | BIT(13));
-	switch(freq) {
-	case 1600000:
-		val |= 0x07;
-		break;
-
-	case 1228000:
-		val |= 0x04;
-		break;
-
-	case 819000:
-		val |= 0x01;
-		break;
-
-	case 614000:
-	default:
-		freq_act = 614000;
-		val |= 0x00;
-		break;
-	}
-	writel(val, (void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
-
-	/* set cluster frequency change request, and wait done */
-	val = readl((void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
-	val |= BIT(12);
-	writel(val, (void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
-	while(readl((void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4)) & BIT(12));
-
-	return freq_act;
-}
-
 static int spacemit_ddr_probe(struct udevice *dev)
 {
 	int ret;
@@ -161,9 +122,8 @@ static int spacemit_ddr_probe(struct udevice *dev)
 #ifdef CONFIG_K1_X_BOARD_FPGA
 	void (*ddr_init)(void);
 #else
-	uint32_t val, cpu_freq, ddr_datarate;
+	uint32_t ddr_datarate;
 	fdt_addr_t ddrc_base;
-	struct udevice *cpu;
 
 	ddrc_base = dev_read_addr(dev);
 #endif
@@ -172,36 +132,6 @@ static int spacemit_ddr_probe(struct udevice *dev)
 	ddr_init = (void(*)(void))(lpddr4_init_fpga_data + 0x144);
 	ddr_init();
 #else
-	writel(0x2dffff, (void __iomem *)0xd4051024);
-
-	/* enable CLK_1228M */
-	val = readl((void __iomem *)(K1X_MPMU_BASE + 0x1024));
-	val |= BIT(16) | BIT(15) | BIT(14) | BIT(13);
-	writel(val, (void __iomem *)(K1X_MPMU_BASE + 0x1024));
-
-	/* enable PLL3(3200Mhz) */
-	val = readl((void __iomem *)(K1X_APB_SPARE_BASE + 0x12C));
-	val |= BIT(31);
-	writel(val, (void __iomem *)(K1X_APB_SPARE_BASE + 0x12C));
-	/* enable PLL3_DIV2 */
-	val = readl((void __iomem *)(K1X_APB_SPARE_BASE + 0x128));
-	val |= BIT(1);
-	writel(val, (void __iomem *)(K1X_APB_SPARE_BASE + 0x128));
-
-	cpu = cpu_get_current_dev();
-	if(dev_read_u32u(cpu, "boot_freq_cluster0", &cpu_freq)) {
-		pr_debug("boot_freq_cluster0 not configured, use 1228000 as default!\n");
-		cpu_freq = 1228000;
-	}
-	cpu_freq = adjust_cpu_freq(0, cpu_freq);
-	pr_info("adjust cluster-0 frequency to %u ...	[done]\n", cpu_freq);
-
-	if(dev_read_u32u(cpu, "boot_freq_cluster1", &cpu_freq)) {
-		pr_debug("boot_freq_cluster1 not configured, use 1228000 as default!\n");
-		cpu_freq = 614000;
-	}
-	cpu_freq = adjust_cpu_freq(1, cpu_freq);
-	pr_info("adjust cluster-1 frequency to %u ...	[done]\n", cpu_freq);
 
 	/* check if dram data-rate is configued in dts */
 	if(dev_read_u32u(dev, "datarate", &ddr_datarate)) {
@@ -212,15 +142,18 @@ static int spacemit_ddr_probe(struct udevice *dev)
 	}
 
 	/* init dram */
+	uint64_t start = get_timer(0);
 	lpddr4_silicon_init(ddrc_base, ddr_datarate);
+	start = get_timer(start);
+	printf("lpddr4_silicon_init consume %lldms\n", start);
 #endif
 
 	ret = test_pattern(CONFIG_SYS_SDRAM_BASE, DDR_CHECK_SIZE);
 	if (ret < 0) {
-		log_err("dram init failed!\n");
+		pr_err("dram init failed!\n");
 		return -EIO;
 	}
-	pr_debug("dram init done\n");
+	pr_info("dram init done\n");
 
 	return 0;
 }

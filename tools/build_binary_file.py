@@ -6,7 +6,7 @@ import time
 import argparse
 import binascii
 import struct
-import yaml
+# import yaml
 import io
 import re
 import tempfile
@@ -522,7 +522,7 @@ class ImageBinary(object):
         self.build_info_dict[name] = (binary_data, )
         return name, binary_data
 
-    def extract_config(self, yaml_file):
+    def extract_yaml_config(self, yaml_file):
         """Extract configuration from XML file.
         """
         if not os.path.isfile(yaml_file):
@@ -533,6 +533,21 @@ class ImageBinary(object):
             config_info_dict = yaml.load(f, Loader = yaml.FullLoader)
         # self.LOG.debug(json.dumps(config_info_dict, indent = 2))
         self.input_path = os.path.dirname(yaml_file)
+        return config_info_dict
+
+    def extract_config(self, json_file):
+        """Extract configuration from JSON file.
+        """
+        if not os.path.isfile(json_file):
+            self.LOG.error("Config file %s NOT exist" %json_file)
+            return False
+
+        with open(json_file, 'r', encoding = 'utf-8') as f:
+            config_info_dict = json.loads(f.read())
+        # self.LOG.debug(json.dumps(config_info_dict, indent = 2))
+        if "_comment" in config_info_dict:
+            config_info_dict.pop("_comment")
+        self.input_path = os.path.dirname(json_file)
         return config_info_dict
 
     def verify_config(self, config_dict):
@@ -606,19 +621,19 @@ class ImageBinary(object):
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description='Parse yaml config file, collect related files, and build image file.',
+        description='Parse JSON config file, collect related files, and build image file.',
     )
-    parser.add_argument('-c',   dest = 'yaml_file',     required = True,    help = 'configuration yml file')
+    parser.add_argument('-c',   dest = 'json_file',     required = True,    help = 'configuration json file')
     parser.add_argument('-o',   dest = 'output_file',   default = 'img.bin', help = 'output file')
 
     args = parser.parse_args()
-    yaml_file = args.yaml_file
+    json_file = args.json_file
     output_file = args.output_file
 
     log = common_decorator.Logger()
     # log = common_decorator.Logger('debug')
     image = ImageBinary(log)
-    config_info_dict = image.extract_config(yaml_file)
+    config_info_dict = image.extract_config(json_file)
     if config_info_dict and image.verify_config(config_info_dict):
         image.build_iamge(config_info_dict, output_file)
 

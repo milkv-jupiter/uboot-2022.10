@@ -451,6 +451,7 @@ static unsigned int rx_bytes_expected(struct usb_ep *ep)
 	return rx_remain;
 }
 
+#ifndef CONFIG_SPL_BUILD
 static unsigned int tx_bytes_expected(struct usb_ep *ep)
 {
 	int tx_remain = fastboot_data_remaining();
@@ -468,6 +469,47 @@ static unsigned int tx_bytes_expected(struct usb_ep *ep)
 
 	return tx_remain;
 }
+
+static void tx_handler_up_image(struct usb_ep *ep, struct usb_request *in_req)
+{
+	char response[FASTBOOT_RESPONSE_LEN] = {0};
+	unsigned int remain_size = fastboot_data_remaining();
+	const unsigned char *buffer = in_req->buf;
+
+	unsigned int transfer_size = tx_bytes_expected(ep);
+
+	if (in_req->status != 0) {
+		pr_err("Bad status: %d\n", in_req->status);
+		return;
+	}
+
+	if (!fastboot_data_remaining()) {
+		fastboot_data_complete(response);
+
+		/*
+		 * Reset global transfer variable
+		 */
+		in_req->complete = fastboot_complete;
+
+		fastboot_tx_write_str(response);
+		return ;
+	}
+
+	if (transfer_size > remain_size)
+		transfer_size = remain_size;
+
+
+	fastboot_data_upload(buffer, transfer_size, response);
+
+	if (response[0]) {
+		fastboot_tx_write_str(response);
+		return;
+	}
+
+	in_req->length = transfer_size;
+	usb_ep_queue(ep, in_req, 0);
+}
+#endif
 
 static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
 {
@@ -503,46 +545,6 @@ static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
 
 	req->actual = 0;
 	usb_ep_queue(ep, req, 0);
-}
-
-static void tx_handler_up_image(struct usb_ep *ep, struct usb_request *in_req)
-{
-	char response[FASTBOOT_RESPONSE_LEN] = {0};
-	unsigned int remain_size = fastboot_data_remaining();
-	const unsigned char *buffer = in_req->buf;
-
-	unsigned int transfer_size = tx_bytes_expected(ep);
-
-	if (in_req->status != 0) {
-		pr_debug("Bad status: %d\n", in_req->status);
-		return;
-	}
-
-	if (!fastboot_data_remaining()) {
-		fastboot_data_complete(response);
-
-		/*
-		 * Reset global transfer variable
-		 */
-		in_req->complete = fastboot_complete;
-
-		fastboot_tx_write_str(response);
-		return ;
-	}
-
-	if (transfer_size > remain_size)
-		transfer_size = remain_size;
-
-
-	fastboot_data_upload(buffer, transfer_size, response);
-
-	if (response[0]) {
-		fastboot_tx_write_str(response);
-		return;
-	}
-
-	in_req->length = transfer_size;
-	usb_ep_queue(ep, in_req, 0);
 }
 
 static void do_exit_on_complete(struct usb_ep *ep, struct usb_request *req)
@@ -592,12 +594,14 @@ static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
 		req->length = rx_bytes_expected(ep);
 	}
 
+#ifndef CONFIG_SPL_BUILD
 	if (!strncmp("PUSH", response, 4)) {
 		fastboot_func->in_req->complete = tx_handler_up_image;
 
 		/* must replace 'PUSH' to 'DATA' */
 		strncpy(response, "DATA", 4);
 	}
+#endif
 
 	if (!strncmp("OKAY", response, 4)) {
 		switch (cmd) {

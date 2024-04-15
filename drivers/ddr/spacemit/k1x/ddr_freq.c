@@ -97,21 +97,6 @@ enum DCLK_BYPASS_sel {
 #define DCLK_BYPASS_CLK_FC		23
 #define DCLK_BYPASS_MASK		(0x3 << DCLK_BYPASS_SHIFT)
 
-static struct dfc_level_config freq_levels[MAX_FREQ_LV] = 
-{
-/*	freq_lv, timing, pll, pll_div, data_rate, high_freq, vol_lv */
-/*	fp 0 == fp 1 just fill in the blanks */
-	{0, 0, DPLL_PLL1, DPLL_DIV4, DPLL_DIV1,  600, 0, 0},
-	{1, 0, DPLL_PLL1, DPLL_DIV4, DPLL_DIV1,  600, 0, 0},
-	{2, 0, DPLL_PLL1, DPLL_DIV3, DPLL_DIV1,  800, 0, 0},
-	{3, 0, DPLL_PLL2, DPLL_DIV3, DPLL_DIV1, 1066, 0, 0},
-	{4, 0, DPLL_PLL1, DPLL_DIV2, DPLL_DIV1, 1200, 0, 1},
-	{5, 1, DPLL_PLL2, DPLL_DIV2, DPLL_DIV1, 1600, 0, 2},
-	{6, 2, DPLL_PLL1, DPLL_DIV1, DPLL_DIV1, 2400, 1, 3},
-	{7, 3, DPLL_PLL2, DPLL_DIV1, DPLL_DIV1, 3200, 1, 3},
-};
-
-
 #define DDR_CONS		4
 #define KHZ			1000
 #define FREQ_MAX		~(0U)
@@ -194,7 +179,7 @@ u32 ddr_get_density(void)
 	cs1_size += mr8_cs11 ? format_size(((mr8_cs11 >> 2) & 0xf), io_width_cs11) : 0;
 
 	ddr_size = cs0_size + cs1_size;
-	pr_debug("DDR size = %d MB\n", ddr_size);
+	pr_info("DDR size = %d MB\n", ddr_size);
 
 	return ddr_size;
 }
@@ -204,7 +189,7 @@ uint32_t get_manufacture_id(void)
 	uint32_t mr5;
 
 	mr5 = mode_register_read(5, 0, 0);
-	pr_debug("MR5 = 0x%x\n",mr5);
+	pr_info("MR5 = 0x%x\n",mr5);
 	return (mr5&0xff);
 }
 
@@ -213,9 +198,35 @@ uint32_t get_ddr_rev_id(void)
 	uint32_t mr6;
 
 	mr6 = mode_register_read(6, 0, 0);
-	pr_debug("MR6 = 0x%x\n",mr6);
+	pr_info("MR6 = 0x%x\n",mr6);
 	return (mr6&0xff);
 }
+
+
+/* adjust ddr frequency to the max value */
+int ddr_freq_max(void)
+{
+//	return ddr_freq_change(MAX_FREQ_LV - 1);
+	return 0;
+}
+
+#ifndef CONFIG_SPL_BUILD
+
+static struct dfc_level_config freq_levels[MAX_FREQ_LV] =
+{
+/*	freq_lv, timing, pll, pll_div, data_rate, high_freq, vol_lv */
+/*	fp 0 == fp 1 just fill in the blanks */
+	{0, 0, DPLL_PLL1, DPLL_DIV4, DPLL_DIV1,  600, 0, 0},
+	{1, 0, DPLL_PLL1, DPLL_DIV4, DPLL_DIV1,  600, 0, 0},
+	{2, 0, DPLL_PLL1, DPLL_DIV3, DPLL_DIV1,  800, 0, 0},
+	{3, 0, DPLL_PLL2, DPLL_DIV3, DPLL_DIV1, 1066, 0, 0},
+	{4, 0, DPLL_PLL1, DPLL_DIV2, DPLL_DIV1, 1200, 0, 1},
+	{5, 1, DPLL_PLL2, DPLL_DIV2, DPLL_DIV1, 1600, 0, 2},
+	{6, 2, DPLL_PLL1, DPLL_DIV1, DPLL_DIV1, 2400, 1, 3},
+	{7, 3, DPLL_PLL2, DPLL_DIV1, DPLL_DIV1, 3200, 1, 3},
+};
+
+
 static int get_cur_freq_level(void)
 {
 	u32 level = readl((void __iomem *)DFC_STATUS);
@@ -478,32 +489,31 @@ static int ddr_freq_change(u32 freq_level)
 	clear_dfc_int_status();
 	enable_dfc_int(false);
 
-	pr_debug("%s: ddr frequency change from level %d to %d\n", __func__, freq_curr, get_cur_freq_level());
+	pr_info("%s: ddr frequency change from level %d to %d\n", __func__, freq_curr, get_cur_freq_level());
 
-	return 0;
-}
-
-/* adjust ddr frequency to the max value */
-int ddr_freq_max(void)
-{
-//	return ddr_freq_change(MAX_FREQ_LV - 1);
 	return 0;
 }
 
 int do_ddr_freq(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
 {
 	u32 freq_level;
+	int i;
 
 	if (argc <= 1 || argc > 2) {
 		/* invalid parameter, report error */
 		return CMD_RET_USAGE;
 	}
 
-        if (!strcmp(argv[0], "list")) {
+	if (0 == strcmp(argv[1], "list")) {
 		/* show valid frequency list */
+		pr_info("support frequency list as shown below:\n");
+		for (i = 0; i < ARRAY_SIZE(freq_levels); i++) {
+			pr_info("Frequency level: %d, data rate: %dMT/s\n",
+				freq_levels[i].freq_lv, freq_levels[i].data_rate);
+		}
 
-                return CMD_RET_SUCCESS;
-        }
+		return CMD_RET_SUCCESS;
+	}
 
 	freq_level = simple_strtoul(argv[1], NULL, 0);
 	if(freq_level >= MAX_FREQ_LV) {
@@ -512,7 +522,7 @@ int do_ddr_freq(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	ddr_freq_change(freq_level);
-	pr_debug("dram frequency level is %u\n", get_cur_freq_level());
+	pr_info("Change DDR data rate to %dMT/s\n", freq_levels[get_cur_freq_level()].data_rate);
 
 	return CMD_RET_SUCCESS;
 }
@@ -520,6 +530,7 @@ int do_ddr_freq(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
 U_BOOT_CMD(
 	ddrfreq, CONFIG_SYS_MAXARGS, 1, do_ddr_freq,
 	"Adjusting the DRAM working frequency",
-	"ddrfreq list	- display the valid frequncy points"
+	"ddrfreq list	- display the valid frequncy points\n"
 	"ddrfreq [0~7]	- adjust dram working frequency to level[0~7]"
 );
+#endif

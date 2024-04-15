@@ -45,14 +45,6 @@
 	status = "okay";
 };
 
-&i2c0 {
-	status = "disabled";
-};
-
-&i2c1 {
-	status = "disabled";
-};
-
 &i2c2 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -68,25 +60,9 @@
 	};
 };
 
-&i2c3 {
-	status = "disabled";
-};
-
 &i2c4 {
 	clock-frequency = <400000>;
 	status = "okay";
-};
-
-&i2c5 {
-	status = "disabled";
-};
-
-&i2c6 {
-	status = "disabled";
-};
-
-&i2c7 {
-	status = "disabled";
 };
 
 &pinctrl {
@@ -112,12 +88,6 @@
 		&range GPIO_124 1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_125 3 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 	>;
-
-	usbp1_vbus: usbp1_vbus {
-		pinctrl-single,pins =<
-			K1X_PADCONF(GPIO_66, MUX_MODE0, (EDGE_NONE | PULL_UP | PAD_1V8_DS2))    /* drive_vbus1_iso */
-		>;
-	};
 
 	gpio80_pmx_func0: gpio80_pmx_func0 {
 		pinctrl-single,pins = <
@@ -224,10 +194,6 @@
 	};
 };
 
-&pcie0_rc {
-	status = "disabled";
-};
-
 &pcie1_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie1_3>;
@@ -253,24 +219,3 @@
 	status = "okay";
 };
 
-&dpu {
-	status = "okay";
-};
-
-&hdmi {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hdmi_0>;
-	status = "okay";
-};
-
-&mipi_dsi {
-	status = "disabled";
-};
-
-&panel {
-	dcp-gpios = <&gpio 82 0>;
-	dcn-gpios = <&gpio 83 0>;
-	bl-gpios = <&gpio 44 0>;
-	reset-gpios = <&gpio 81 0>;
-	status = "disabled";
-};

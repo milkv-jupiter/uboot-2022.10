@@ -600,6 +600,8 @@ int menu_show(int bootdelay)
 		return 0;
 #endif
 
+	env_set("stdout","serial,vidconsole");
+
 	while (1) {
 		ret = bootmenu_show(bootdelay);
 		bootdelay = -1;

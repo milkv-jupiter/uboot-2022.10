@@ -2405,16 +2405,23 @@ config JFFS2_DEV
 	help
 	  The default device to use with the jffs2 command.
 
+config JFFS2_MTDPARTS
+    bool "Enable JFFS2 MTD partition options"
+    depends on CMD_JFFS2
+    help
+      Enable specifying default offset and size for JFFS2 partition
+      through configuration.
+
 config JFFS2_PART_OFFSET
 	hex "Default offset within flash to locate the JFFS2 image"
-	depends on CMD_JFFS2
+	depends on JFFS2_MTDPARTS
 	default 0x0
 	help
 	  The default offset within flash to locate the JFFS2 image.
 
 config JFFS2_PART_SIZE
 	hex "Default size of JFFS2 partition"
-	depends on CMD_JFFS2
+	depends on JFFS2_MTDPARTS
 	default 0xFFFFFFFF
 	help
 	  The default size of the JFFS2 partition

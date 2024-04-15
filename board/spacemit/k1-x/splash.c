@@ -9,14 +9,16 @@
 
 #if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_CMD_BMP)
 
-void set_emmc_splash_location(struct splash_location *locations) {
+int set_emmc_splash_location(struct splash_location *locations) {
 	int dev_index = mmc_get_env_dev();
 	int part_index;
 	char devpart_str[16];
+	int err;
 
-	if (get_partition_index_by_name(BOOTFS_NAME, &part_index) < 0) {
+	err = get_partition_index_by_name(BOOTFS_NAME, &part_index);
+	if (err) {
 		pr_err("Failed to get partition index for %s\n", BOOTFS_NAME);
-		return;
+		return -1;
 	}
 
 	snprintf(devpart_str, sizeof(devpart_str), "%d:%d", dev_index, part_index);
@@ -25,16 +27,19 @@ void set_emmc_splash_location(struct splash_location *locations) {
 	locations[0].storage = SPLASH_STORAGE_MMC;
 	locations[0].flags = SPLASH_STORAGE_FS;
 	locations[0].devpart = strdup(devpart_str);
+	return 0;
 }
 
-void set_mmc_splash_location(struct splash_location *locations) {
+int set_mmc_splash_location(struct splash_location *locations) {
 	int dev_index = mmc_get_env_dev();
 	int part_index;
 	char devpart_str[16];
+	int err;
 
-	if (get_partition_index_by_name(BOOTFS_NAME, &part_index) < 0) {
+	err = get_partition_index_by_name(BOOTFS_NAME, &part_index);
+	if (err) {
 		pr_err("Failed to get partition index for %s\n", BOOTFS_NAME);
-		return;
+		return -1;
 	}
 
 	snprintf(devpart_str, sizeof(devpart_str), "%d:%d", dev_index, part_index);
@@ -43,9 +48,10 @@ void set_mmc_splash_location(struct splash_location *locations) {
 	locations[0].storage = SPLASH_STORAGE_MMC;
 	locations[0].flags = SPLASH_STORAGE_FS;
 	locations[0].devpart = strdup(devpart_str);
+	return 0;
 }
 
-void set_nor_splash_location(struct splash_location *locations) {
+int set_nor_splash_location(struct splash_location *locations) {
 	struct blk_desc *dev_desc;
 	struct disk_partition info;
 	int err;
@@ -54,13 +60,13 @@ void set_nor_splash_location(struct splash_location *locations) {
 
 	if (run_command("nvme scan", 0)) {
 		pr_err("Cannot scan NVMe devices!\n");
-		return;
+		return -1;
 	}
 
 	dev_desc = blk_get_dev("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX);
 	if (!dev_desc) {
 		pr_err("Cannot find NVMe device\n");
-		return;
+		return -1;
 	}
 
 	for (part = 1; part <= MAX_SEARCH_PARTITIONS; part++) {
@@ -76,7 +82,7 @@ void set_nor_splash_location(struct splash_location *locations) {
 
 	if (part > MAX_SEARCH_PARTITIONS) {
 		pr_err("Failed to find bootfs on NOR\n");
-		return;
+		return -1;
 	}
 
 	snprintf(devpart_str, sizeof(devpart_str), "%d:%d", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX, part);
@@ -85,9 +91,10 @@ void set_nor_splash_location(struct splash_location *locations) {
 	locations[0].storage = SPLASH_STORAGE_NVME;
 	locations[0].flags = SPLASH_STORAGE_FS;
 	locations[0].devpart = strdup(devpart_str);
+	return 0;
 }
 
-void set_nand_splash_location(struct splash_location *locations)
+int set_nand_splash_location(struct splash_location *locations)
 {
 	char *nand_part = parse_mtdparts_and_find_bootfs();
 	if (nand_part) {
@@ -96,12 +103,15 @@ void set_nand_splash_location(struct splash_location *locations)
 		locations[0].flags = SPLASH_STORAGE_FS;
 		locations[0].mtdpart = strdup(nand_part);
 		locations[0].ubivol = strdup(BOOTFS_NAME);
+		return 0;
 	} else {
 		pr_err("Failed to find bootfs on NAND\n");
+		return -1;
 	}
 }
 
 int load_splash_screen(void) {
+	int ret;
 	enum board_boot_mode boot_mode = get_boot_mode();
 	struct splash_location splash_locations[1];
 
@@ -109,21 +119,23 @@ int load_splash_screen(void) {
 
 	switch (boot_mode) {
 		case BOOT_MODE_EMMC:
-			set_emmc_splash_location(splash_locations);
+			ret = set_emmc_splash_location(splash_locations);
 			break;
 		case BOOT_MODE_SD:
-			set_mmc_splash_location(splash_locations);
+			ret = set_mmc_splash_location(splash_locations);
 			break;
 		case BOOT_MODE_NAND:
-			set_nand_splash_location(splash_locations);
+			ret = set_nand_splash_location(splash_locations);
 			break;
 		case BOOT_MODE_NOR:
-			set_nor_splash_location(splash_locations);
+			ret = set_nor_splash_location(splash_locations);
 			break;
 		default:
 			pr_err("Unsupported boot mode for splash screen\n");
 			break;
 	}
+	if(ret)
+		return -1;
 
 	if (CONFIG_IS_ENABLED(SPLASH_SOURCE))
 		return splash_source_load(splash_locations, ARRAY_SIZE(splash_locations));

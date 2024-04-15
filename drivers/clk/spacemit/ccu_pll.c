@@ -125,7 +125,7 @@ static ulong __get_vco_freq(struct clk *clk)
 			return freq_pll_regs_table[i].rate;
     }
 
-	pr_err("Unknown rate for clock\n");
+	pr_info("Unknown rate for clock\n");
 	return 0;
 }
 
@@ -189,7 +189,7 @@ static ulong ccu_pll_set_rate(struct clk *clk, ulong rate)
 	bool found = false;
 
 	if (ccu_pll_is_enabled(clk)) {
-		pr_err("%s is enabled, ignore the setrate!\n", clk->dev->name);
+		pr_info("%s is enabled, ignore the setrate!\n", clk->dev->name);
 		return 0;
 	}
 
@@ -258,7 +258,7 @@ static ulong ccu_pll_round_rate(struct clk *clk, ulong rate)
 			}
 		}
 	} else {
-		pr_err("don't find freq table for pll\n");
+		pr_info("don't find freq table for pll\n");
 	}
 	return max_rate;
 }

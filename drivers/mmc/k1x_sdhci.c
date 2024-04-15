@@ -425,7 +425,11 @@ static int spacemit_sdhci_probe(struct udevice *dev)
 	}
 
 	/* Set quirks */
+#if defined(CONFIG_SPL_BUILD)
+	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD;
+#else
 	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD | SDHCI_QUIRK_32BIT_DMA_ADDR;
+#endif
 	host->host_caps = MMC_MODE_HS | MMC_MODE_HS_52MHz;
 	host->max_clk = priv->clk_src_freq;
 

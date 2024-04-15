@@ -428,26 +428,25 @@ void put_fl_mem_nor(void *buf)
 	free(buf);
 }
 
-struct mtd_info *get_spi_nor_by_name(const char *name)
+struct mtd_info *get_spi_flash(void)
 {
 	struct udevice *dev = NULL;
 	int ret;
 
-	for (ret = uclass_first_device(UCLASS_SPI_FLASH, &dev);
-		 dev;
-		 ret = uclass_next_device(&dev)) {
-
-		if (strcmp(dev->name, name) == 0) {
-			struct spi_flash *flash = dev_get_uclass_priv(dev);
-			if (!flash) {
-				printf("Found device but failed to get SPI flash data structure\n");
-				return NULL;
-			}
-			return &flash->mtd;
-		}
+	ret = uclass_first_device(UCLASS_SPI_FLASH, &dev);
+	if (ret || !dev) {
+		pr_err("Failed to get the first SPI NOR device\n");
+		return NULL;
 	}
-	printf("SPI NOR device named '%s' not found\n", name);
-	return NULL;
+
+	struct spi_flash *flash = dev_get_uclass_priv(dev);
+	if (!flash) {
+		pr_err("Found device but failed to get SPI flash data structure\n");
+		return NULL;
+	}
+
+	pr_info("Using the first SPI NOR device: %s\n", dev->name);
+	return &flash->mtd;
 }
 
 static int nor_read(struct mtd_info *mtd, u32 offset, size_t len, void *buf)
@@ -458,12 +457,12 @@ static int nor_read(struct mtd_info *mtd, u32 offset, size_t len, void *buf)
 	ret = mtd_read(mtd, offset, len, &retlen, buf);
 
 	if (ret < 0) {
-		printf("Error: mtd_read returned %d\n", ret);
+		pr_err("Error: mtd_read returned %d\n", ret);
 		return ret;
 	}
 
 	if (retlen != len) {
-		printf("Warning: Requested length %zu but got %zu\n", len, retlen);
+		pr_err("Warning: Requested length %zu but got %zu\n", len, retlen);
 		return -EIO;
 	}
 
@@ -478,15 +477,15 @@ static inline void *get_fl_mem_nor(u32 off, u32 size, void *ext_buf)
 	if (!buf) {
 		buf = malloc(size);
 		if (!buf) {
-			printf("Failed to allocate memory\n");
+			pr_err("Failed to allocate memory\n");
 			return NULL;
 		}
 	}
 
 	if (!cached_mtd) {
-		cached_mtd = get_spi_nor_by_name(CONFIG_JFFS2_DEV);
+		cached_mtd = get_spi_flash();
 		if (!cached_mtd) {
-			printf("Failed to get SPI NOR device\n");
+			pr_err("Failed to get SPI NOR device\n");
 			if (!ext_buf) {
 				free(buf);
 			}
@@ -495,7 +494,7 @@ static inline void *get_fl_mem_nor(u32 off, u32 size, void *ext_buf)
 	}
 
 	if (nor_read(cached_mtd, off, size, buf)) {
-		printf("SPI NOR read failed\n");
+		pr_err("SPI NOR read failed\n");
 		if (!ext_buf) {
 			free(buf);
 		}
@@ -511,7 +510,7 @@ static inline void *get_node_mem_nor(u32 off, void *ext_buf)
 
 	pNode = get_fl_mem_nor(off, sizeof(*pNode), NULL);
 	if (!pNode) {
-		printf("Failed to read node at offset=%u\n", off);
+		pr_err("Failed to read node at offset=%u\n", off);
 		return NULL;
 	}
 
@@ -876,6 +875,10 @@ jffs2_1pass_read_inode(struct b_lists *pL, u32 inode, char *dest)
 				put_fl_mem(jNode, pL->readbuf);
 				jNode = (struct jffs2_raw_inode *)
 					get_node_mem(b->offset, pL->readbuf);
+				if (!jNode) {
+					pr_err("Error: Failed to get jNode at offset=%u\n", b->offset);
+					return -1;
+				}
 				src = ((uchar *)jNode) +
 					sizeof(struct jffs2_raw_inode);
 				/* ignore data behind latest known EOF */

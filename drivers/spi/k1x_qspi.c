@@ -271,14 +271,14 @@ static u32 qspi_readl(struct k1x_qspi *qspi, void __iomem *addr)
 
 static void qspi_set_func_clk(struct k1x_qspi *qspi)
 {
-    reset_assert_bulk(&qspi->resets);
-    clk_disable(&qspi->bus_clk);
-    clk_disable(&qspi->clk);
+	reset_assert_bulk(&qspi->resets);
+	clk_disable(&qspi->bus_clk);
+	clk_disable(&qspi->clk);
 
+	reset_deassert_bulk(&qspi->resets);
 	clk_enable(&qspi->bus_clk);
 	clk_set_rate(&qspi->clk, qspi->max_hz);
 	clk_enable(&qspi->clk);
-    reset_deassert_bulk(&qspi->resets);
 }
 
 static int qspi_reset(struct k1x_qspi *qspi)

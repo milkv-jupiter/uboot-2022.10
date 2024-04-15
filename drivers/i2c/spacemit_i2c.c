@@ -629,7 +629,7 @@ static int spacemit_i2c_probe(struct udevice *bus)
 	priv->base = (void *)devfdt_get_addr_ptr(bus);
 	ret = dev_read_u32(bus, "clock-frequency", &priv->clk_rate);
         if (ret) {
-                pr_debug("Default to 100kHz\n");
+                pr_info("Default to 100kHz\n");
 		/* default clock rate: 100k */
                 priv->clk_rate = 100000;
         }

@@ -125,29 +125,41 @@ static int getvar_get_part_info(const char *part_name, char *response,
 				size_t *size)
 {
 	int r;
-# if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC) || CONFIG_IS_ENABLED(FASTBOOT_MULTI_FLASH_OPTION_MMC)
-	struct blk_desc *dev_desc;
-	struct disk_partition part_info;
+	u32 boot_mode = get_boot_pin_select();
+	switch(boot_mode){
+#if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MTD) || CONFIG_IS_ENABLED(FASTBOOT_MULTI_FLASH_OPTION_MTD)
+	case BOOT_MODE_NOR:
+	case BOOT_MODE_NAND:
+		struct part_info *mtd_part_info;
+		r = fastboot_mtd_get_part_info(part_name, &mtd_part_info, response);
+		if (r >= 0 && size)
+			*size = mtd_part_info->size;
+		break;
+#endif
 
-	r = fastboot_mmc_get_part_info(part_name, &dev_desc, &part_info,
-				       response);
-	if (r >= 0 && size)
-		*size = part_info.size * part_info.blksz;
-# elif CONFIG_IS_ENABLED(FASTBOOT_FLASH_NAND)
+#if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC) || CONFIG_IS_ENABLED(FASTBOOT_MULTI_FLASH_OPTION_MMC)
+	case BOOT_MODE_EMMC:
+	case BOOT_MODE_SD:
+		struct blk_desc *dev_desc;
+		struct disk_partition part_info;
+
+		r = fastboot_mmc_get_part_info(part_name, &dev_desc, &part_info,
+						response);
+		if (r >= 0 && size)
+			*size = part_info.size * part_info.blksz;
+		break;
+#endif
+	default:
+		fastboot_fail("this storage is not supported in bootloader", response);
+		r = -ENODEV;
+	}
+
+#if CONFIG_IS_ENABLED(FASTBOOT_FLASH_NAND)
 	struct part_info *part_info;
-
 	r = fastboot_nand_get_part_info(part_name, &part_info, response);
 	if (r >= 0 && size)
 		*size = part_info->size;
-# elif CONFIG_IS_ENABLED(FASTBOOT_FLASH_MTD) || CONFIG_IS_ENABLED(FASTBOOT_MULTI_FLASH_OPTION_MTD)
-	struct part_info *mtd_part_info;
-	r = fastboot_mtd_get_part_info(part_name, &mtd_part_info, response);
-	if (r >= 0 && size)
-		*size = mtd_part_info->size;
-# else
-	fastboot_fail("this storage is not supported in bootloader", response);
-	r = -ENODEV;
-# endif
+#endif
 
 	return r;
 }
@@ -259,6 +271,8 @@ static void getvar_mtd_size(char *var_parameter, char *response)
 
 			}
 		}
+		fastboot_fail("flash to mtd dev but can not get mtd size", response);
+		return;
 #endif
 	default:
 		fastboot_okay("NULL", response);

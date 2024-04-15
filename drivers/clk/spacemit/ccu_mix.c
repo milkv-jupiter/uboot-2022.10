@@ -23,6 +23,57 @@
 
 #define TIMEOUT_LIMIT (20000) /* max timeout 10000us */
 static int twsi8_reg_val = 0x04;
+
+static int ccu_mix_trigger_fc(struct clk *clk)
+{
+#ifdef CONFIG_SPL_BUILD
+	return 0;
+#else
+	struct ccu_mix *mix = clk_to_ccu_mix(clk);
+	struct ccu_common * common = &mix->common;
+	unsigned long val = 0;
+
+	int ret = 0, timeout = 50;
+
+	if (common->reg_type == CLK_DIV_TYPE_1REG_FC_V2
+		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4
+		|| common->reg_type == CLK_DIV_TYPE_1REG_FC_DIV_V5
+		|| common->reg_type == CLK_DIV_TYPE_1REG_FC_MUX_V6) {
+
+		timeout = 50;
+		val = readl(common->base + common->reg_ctrl);
+		val |= common->fc;
+		writel(val, common->base + common->reg_ctrl);
+
+		do {
+			val = readl(common->base + common->reg_ctrl);
+			timeout--;
+			if (!(val & (common->fc)))
+				break;
+		} while (timeout);
+
+		if (timeout == 0) {
+			timeout = 5000;
+			do {
+				val = readl(common->base + common->reg_ctrl);
+				timeout--;
+				if (!(val & (common->fc)))
+					break;
+			} while (timeout);
+			if (timeout != 0) {
+				ret = 0;
+
+			} else {
+				ret = -1;
+			}
+		}
+	}
+
+	return ret;
+#endif
+}
+
+#ifndef CONFIG_SPL_BUILD
 static int ccu_mix_disable(struct clk *clk)
 {
 	struct ccu_mix *mix = clk_to_ccu_mix(clk);
@@ -33,7 +84,11 @@ static int ccu_mix_disable(struct clk *clk)
 	if (!gate)
 		return 0;
 
+#ifdef CONFIG_SPL_BUILD
+	if (clk->id == CLK_TWSI8_SPL){
+#else
 	if (clk->id == CLK_TWSI8){
+#endif
 		twsi8_reg_val &= ~0x7;
 		twsi8_reg_val |= 0x4;
 		tmp = twsi8_reg_val;
@@ -68,8 +123,84 @@ static int ccu_mix_disable(struct clk *clk)
 	return 0;
 }
 
+static ulong ccu_mix_round_rate(struct clk *clk, ulong rate)
+{
+	return rate;
+}
+
+static int ccu_mix_set_parent(struct clk *clk, struct clk *parent)
+{
+	struct ccu_mix *mix = clk_to_ccu_mix(clk);
+	struct ccu_common * common = &mix->common;
+	struct ccu_mux_config *mux = mix->mux;
+	int index;
+	u32 reg, i;
+	int ret;
+
+	if (!parent)
+		return -EINVAL;
+
+	for (i = 0; i < common->num_parents; i++) {
+		if (!strcmp(parent->dev->name, common->parent_names[i])){
+			index = i;
+			break;
+		}
+	}
+
+	if (index < 0) {
+		pr_info("Could not fetch index\n");
+		return index;
+	}
+
+#ifdef CONFIG_SPL_BUILD
+	if (clk->id == CLK_TWSI8_SPL){
+#else
+	if (clk->id == CLK_TWSI8){
+#endif
+		twsi8_reg_val &= ~GENMASK(mux->width + mux->shift - 1, mux->shift);
+		twsi8_reg_val |= (index << mux->shift);
+		reg = twsi8_reg_val;
+		if (common->reg_type == CLK_DIV_TYPE_2REG_NOFC_V3
+			|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4)
+			writel(reg, common->base + common->reg_sel);
+		else
+			writel(reg, common->base + common->reg_ctrl);
+
+		return 0;
+	}
+
+	if (common->reg_type == CLK_DIV_TYPE_2REG_NOFC_V3
+		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4)
+		reg = readl(common->base + common->reg_sel);
+	else
+		reg = readl(common->base + common->reg_ctrl);
+
+	reg &= ~GENMASK(mux->width + mux->shift - 1, mux->shift);
+
+	if (common->reg_type == CLK_DIV_TYPE_2REG_NOFC_V3
+		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4)
+		writel(reg | (index << mux->shift), common->base + common->reg_sel);
+	else
+		writel(reg | (index << mux->shift), common->base + common->reg_ctrl);
+
+	if (common->reg_type == CLK_DIV_TYPE_1REG_FC_V2
+		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4
+		|| common->reg_type == CLK_DIV_TYPE_1REG_FC_MUX_V6) {
+
+		ret = ccu_mix_trigger_fc(clk);
+		if(ret)
+			pr_info("%s of %s timeout\n", __func__, clk->dev->name);
+	}
+
+	return 0;
+}
+#endif
+
 static int ccu_mix_enable(struct clk *clk)
 {
+#ifdef CONFIG_SPL_BUILD
+	clk->id = transfer_clk_id_to_spl(clk->id);
+#endif
 	struct ccu_mix *mix = clk_to_ccu_mix(clk);
 	struct ccu_common * common = &mix->common;
 	struct ccu_gate_config *gate = mix->gate;
@@ -80,7 +211,11 @@ static int ccu_mix_enable(struct clk *clk)
 	if (!gate)
 		return 0;
 
+#ifdef CONFIG_SPL_BUILD
+	if (clk->id == CLK_TWSI8_SPL){
+#else
 	if (clk->id == CLK_TWSI8){
+#endif
 		twsi8_reg_val &= ~0x7;
 		twsi8_reg_val |= 0x3;
 		tmp = twsi8_reg_val;
@@ -126,10 +261,10 @@ static int ccu_mix_enable(struct clk *clk)
 
 	if (timeout_power > 1) {
 		if (val == tmp)
-			pr_err("write clk_gate %s timeout occur, read pass after %d us delay\n",
+			pr_info("write clk_gate %s timeout occur, read pass after %d us delay\n",
 			clk_hw_get_name(&common->clk), timeout_power);
 		else
-			pr_err("write clk_gate  %s timeout after %d us!\n", clk_hw_get_name(&common->clk), timeout_power);
+			pr_info("write clk_gate  %s timeout after %d us!\n", clk_hw_get_name(&common->clk), timeout_power);
 	}
 
 	if (gate->flags & SPACEMIT_CLK_GATE_NEED_DELAY) {
@@ -141,6 +276,9 @@ static int ccu_mix_enable(struct clk *clk)
 
 static ulong ccu_mix_get_rate(struct clk *clk)
 {
+#ifdef CONFIG_SPL_BUILD
+	clk->id = transfer_clk_id_to_spl(clk->id);
+#endif
 	struct ccu_mix *mix = clk_to_ccu_mix(clk);
 	struct ccu_common * common = &mix->common;
 	struct ccu_div_config *div = mix->div;
@@ -148,7 +286,11 @@ static ulong ccu_mix_get_rate(struct clk *clk)
 	unsigned long val;
 	u32 reg;
 
+#ifdef CONFIG_SPL_BUILD
+	if (clk->id == CLK_TWSI8_SPL){
+#else
 	if (clk->id == CLK_TWSI8){
+#endif
 		val = parent_rate;
 		return val;
 	}
@@ -173,57 +315,6 @@ static ulong ccu_mix_get_rate(struct clk *clk)
 				  div->flags, div->width);
 
 	return val;
-}
-
-static ulong ccu_mix_round_rate(struct clk *clk, ulong rate)
-{
-	return rate;
-}
-
-static int ccu_mix_trigger_fc(struct clk *clk)
-{
-	struct ccu_mix *mix = clk_to_ccu_mix(clk);
-	struct ccu_common * common = &mix->common;
-	unsigned long val = 0;
-
-	int ret = 0, timeout = 50;
-
-	if (common->reg_type == CLK_DIV_TYPE_1REG_FC_V2
-		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4
-		|| common->reg_type == CLK_DIV_TYPE_1REG_FC_DIV_V5
-		|| common->reg_type == CLK_DIV_TYPE_1REG_FC_MUX_V6) {
-
-		timeout = 50;
-		val = readl(common->base + common->reg_ctrl);
-		val |= common->fc;
-		writel(val, common->base + common->reg_ctrl);
-
-		do {
-			val = readl(common->base + common->reg_ctrl);
-			timeout--;
-			if (!(val & (common->fc)))
-				break;
-		} while (timeout);
-
-		if (timeout == 0) {
-			timeout = 5000;
-			do {
-				val = readl(common->base + common->reg_ctrl);
-				timeout--;
-				if (!(val & (common->fc)))
-					break;
-			} while (timeout);
-			if (timeout != 0) {
-				ret = 0;
-
-			} else {
-				ret = -1;
-			}
-		}
-	}
-
-	return ret;
-
 }
 
 unsigned long ccu_mix_calc_best_rate(struct clk *clk, unsigned long rate,
@@ -282,6 +373,9 @@ u32 *mux_val, u32 *div_val, u32 *parent_id)
 
 static ulong ccu_mix_set_rate(struct clk *clk, unsigned long rate)
 {
+#ifdef CONFIG_SPL_BUILD
+	clk->id = transfer_clk_id_to_spl(clk->id);
+#endif
 	struct ccu_mix *mix = clk_to_ccu_mix(clk);
 	struct ccu_common * common = &mix->common;
 	struct ccu_div_config *div_config = mix->div? mix->div: NULL;
@@ -293,7 +387,11 @@ static ulong ccu_mix_set_rate(struct clk *clk, unsigned long rate)
 	u32 reg;
 	int ret;
 
+#ifdef CONFIG_SPL_BUILD
+	if (clk->id == CLK_TWSI8_SPL)
+#else
 	if (clk->id == CLK_TWSI8)
+#endif
 		return 0;
 
 	if(!div_config && !mux_config){
@@ -349,7 +447,7 @@ static ulong ccu_mix_set_rate(struct clk *clk, unsigned long rate)
 
 		ret = ccu_mix_trigger_fc(clk);
 		if(ret)
-			pr_err("%s of %s timeout\n", __func__, clk->dev->name);
+			pr_info("%s of %s timeout\n", __func__, clk->dev->name);
 	}
 	return 0;
 
@@ -366,7 +464,11 @@ unsigned int ccu_mix_get_parent(struct clk *clk)
 	if(!mux)
 		return 0;
 
+#ifdef CONFIG_SPL_BUILD
+	if (clk->id == CLK_TWSI8_SPL){
+#else
 	if (clk->id == CLK_TWSI8){
+#endif
 		parent = (twsi8_reg_val >> 4) & 0x7;
 		return parent;
 	}
@@ -391,76 +493,15 @@ unsigned int ccu_mix_get_parent(struct clk *clk)
 	return parent;
 }
 
-static int ccu_mix_set_parent(struct clk *clk, struct clk *parent)
-{
-	struct ccu_mix *mix = clk_to_ccu_mix(clk);
-	struct ccu_common * common = &mix->common;
-	struct ccu_mux_config *mux = mix->mux;
-	int index;
-	u32 reg, i;
-	int ret;
-
-	if (!parent)
-		return -EINVAL;
-
-	for (i = 0; i < common->num_parents; i++) {
-		if (!strcmp(parent->dev->name, common->parent_names[i])){
-			index = i;
-			break;
-		}
-	}
-
-	if (index < 0) {
-		pr_err("Could not fetch index\n");
-		return index;
-	}
-
-	if (clk->id == CLK_TWSI8){
-		twsi8_reg_val &= ~GENMASK(mux->width + mux->shift - 1, mux->shift);
-		twsi8_reg_val |= (index << mux->shift);
-		reg = twsi8_reg_val;
-		if (common->reg_type == CLK_DIV_TYPE_2REG_NOFC_V3
-			|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4)
-			writel(reg, common->base + common->reg_sel);
-		else
-			writel(reg, common->base + common->reg_ctrl);
-
-		return 0;
-	}
-
-	if (common->reg_type == CLK_DIV_TYPE_2REG_NOFC_V3
-		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4)
-		reg = readl(common->base + common->reg_sel);
-	else
-		reg = readl(common->base + common->reg_ctrl);
-
-	reg &= ~GENMASK(mux->width + mux->shift - 1, mux->shift);
-
-	if (common->reg_type == CLK_DIV_TYPE_2REG_NOFC_V3
-		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4)
-		writel(reg | (index << mux->shift), common->base + common->reg_sel);
-	else
-		writel(reg | (index << mux->shift), common->base + common->reg_ctrl);
-
-	if (common->reg_type == CLK_DIV_TYPE_1REG_FC_V2
-		|| common->reg_type == CLK_DIV_TYPE_2REG_FC_V4
-		|| common->reg_type == CLK_DIV_TYPE_1REG_FC_MUX_V6) {
-
-		ret = ccu_mix_trigger_fc(clk);
-		if(ret)
-			pr_err("%s of %s timeout\n", __func__, clk->dev->name);
-	}
-
-	return 0;
-}
-
 const struct clk_ops ccu_mix_ops = {
+#ifndef CONFIG_SPL_BUILD
 	.disable 	= ccu_mix_disable,
-	.enable 	= ccu_mix_enable,
+	.round_rate 	= ccu_mix_round_rate,
 	.set_parent 	= ccu_mix_set_parent,
+#endif
+	.enable 	= ccu_mix_enable,
 	.get_rate	= ccu_mix_get_rate,
 	.set_rate 	= ccu_mix_set_rate,
-	.round_rate 	= ccu_mix_round_rate,
 };
 
 U_BOOT_DRIVER(ccu_clk_mix) = {

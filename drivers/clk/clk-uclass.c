@@ -596,6 +596,7 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 	const struct clk_ops *ops;
 	struct clk *clkp;
 	struct clk *parentp;
+	struct clk *cur_parent;
 	int ret;
 
 	pr_debug("%s(clk=%p, parent=%p)\n", __func__, clk, parent);
@@ -613,7 +614,23 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 	/* get private clock struct used for cache */
 	clk_get_priv(clk, &clkp);
 	clk_get_priv(parent, &parentp);
+	if (CONFIG_IS_ENABLED(CLK_CCF)) {
+		if (clkp->enable_count)
+			clk_enable(parent);
+		if (clkp->dev->parent) {
+			cur_parent = dev_get_clk_ptr(clkp->dev->parent);
+			if (clkp->enable_count && cur_parent->enable_count) {
+				if (device_get_uclass_id(clkp->dev->parent) == UCLASS_CLK) {
+					ret = clk_disable(cur_parent);
+					if (ret) {
+						pr_debug("Disable %s failed\n", clkp->dev->parent->name);
+						return ret;
+					}
+				}
+			}
 
+		}
+	}
 	if (CONFIG_IS_ENABLED(CLK_CCF))
 		ret = device_reparent(clkp->dev, parentp->dev);
 

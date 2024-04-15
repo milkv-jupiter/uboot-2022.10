@@ -71,6 +71,12 @@ SECTIONS
 
 	. = ALIGN(4);
 
+	. = DDR_TRAINING_DATA_BASE;
+	.ddr_training : {
+		KEEP(*(.ddr_training))
+		. = ALIGN(8);
+	}
+
 	_end = .;
 	_image_binary_end = .;
 

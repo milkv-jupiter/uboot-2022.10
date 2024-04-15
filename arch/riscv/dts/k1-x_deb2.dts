@@ -181,6 +181,7 @@
 	cd-inverted;
 	cap-sd-highspeed;
 	sdh-phy-module = <0>;
+	clk-src-freq = <204800000>;
 	status = "okay";
 };
 
@@ -191,6 +192,7 @@
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
 	sdh-phy-module = <1>;
+	clk-src-freq = <375000000>;
 	status = "okay";
 };
 

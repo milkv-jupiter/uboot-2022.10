@@ -38,13 +38,19 @@
 #define BOOT_INFO_EMMC_TOTALSIZE (0x10000000)
 #define BOOT_INFO_EMMC_SPL0_OFFSET (0x200)
 #define BOOT_INFO_EMMC_SPL1_OFFSET (0x0)
-#define BOOT_INFO_EMMC_LIMIT (CONFIG_SPL_SIZE_LIMIT)
+// add 4KB header and 0x100 Byte signature
+#define BOOT_INFO_EMMC_LIMIT ((CONFIG_SPL_SIZE_LIMIT) + 0x1100)
 
 typedef enum {
 	DEVICE_MMC,
 	DEVICE_USB,
 	DEVICE_NET,
 } DeviceType;
+
+struct flash_volume_image {
+	char *name;
+	char *file_name;
+};
 
 struct flash_parts_info {
 	char *part_name;
@@ -55,6 +61,8 @@ struct flash_parts_info {
 	  for fsbl and the partition is not available.
 	*/
 	bool hidden;
+	struct flash_volume_image *volume_images;
+	int volume_images_count;
 };
 
 struct gpt_info {
@@ -64,15 +72,29 @@ struct gpt_info {
 	bool fastboot_flash_gpt;
 };
 
+enum mtd_size_type {
+	MTD_SIZE_G = 0,
+	MTD_SIZE_M,
+	MTD_SIZE_K,
+};
+struct _mtd_size_info {
+	/*save mtd size type such as G/M/K*/
+	u32 size_type;
+	u32 size;
+};
+
 struct flash_dev {
 	char *device_name;
-	char *dev_str;
+	u32 dev_index;
 	struct flash_parts_info parts_info[MAX_PARTITION_NUM];
 	struct gpt_info gptinfo;
 	struct disk_partition *d_info;
 	struct blk_desc *dev_desc;
 	char *mtd_table;
-	char mtd_partition_file[30];
+
+	/*mtdinfo would use to try to find suitable patition file*/
+	char partition_file_name[30];
+	struct _mtd_size_info mtdinfo;
 
 	/*mtd write func*/
 	int (*mtd_write)(struct mtd_info *mtd,
@@ -165,6 +187,12 @@ void fastboot_oem_flash_gpt(const char *cmd, void *download_buffer, u32 download
 int fastboot_mmc_flash_offset(u32 start_offset, void *download_buffer, u32 download_bytes);
 
 /**
+ * @brief accumulation from the addr and size
+*/
+u64 checksum64(u64 *baseaddr, u64 size);
+
+
+/**
  * @brief check image crc at blk dev. if crc is same it would return RESULT_OK(0).
  *
  * @param dev_desc struct blk_desc.
@@ -174,8 +202,8 @@ int fastboot_mmc_flash_offset(u32 start_offset, void *download_buffer, u32 downl
  * @param image_size
  * @return int
  */
-int check_blk_image_crc(struct blk_desc *dev_desc, ulong crc_compare, lbaint_t part_start_cnt,
-						ulong blksz, int image_size);
+int compare_blk_image_val(struct blk_desc *dev_desc, u64 crc_compare, lbaint_t part_start_cnt,
+						ulong blksz, uint64_t image_size);
 
 /**
  * @brief check image crc at mtd dev. if crc is same it would return RESULT_OK(0).
@@ -185,7 +213,7 @@ int check_blk_image_crc(struct blk_desc *dev_desc, ulong crc_compare, lbaint_t p
  * @param image_size
  * @return int
 */
-int check_mtd_image_crc(struct mtd_info *mtd, ulong crc_compare, int image_size);
+int compare_mtd_image_val(struct mtd_info *mtd, u64 crc_compare, uint64_t image_size);
 
 /**
  * @brief transfer the string of size 'KiB' or 'MiB' to u32 type.
@@ -212,7 +240,7 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr);
  * @param fdev
  * @return int
  */
-int _update_partinfo_to_env(void *download_buffer, u32 download_bytes,
+int _clear_env_part(void *download_buffer, u32 download_bytes,
 							struct flash_dev *fdev);
 
 /**

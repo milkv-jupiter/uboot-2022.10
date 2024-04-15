@@ -202,7 +202,7 @@ int env_load(void)
 		if (!env_has_inited(drv->location))
 			continue;
 
-		pr_debug("Loading Environment from %s... ", drv->name);
+		pr_info("Loading Environment from %s... ", drv->name);
 		/*
 		 * In error case, the error message must be printed during
 		 * drv->load() in some underlying API, and it must be exactly
@@ -210,7 +210,7 @@ int env_load(void)
 		 */
 		ret = drv->load();
 		if (!ret) {
-			pr_debug("OK\n");
+			pr_info("OK\n");
 			gd->env_load_prio = prio;
 
 #if !CONFIG_IS_ENABLED(ENV_APPEND)
@@ -252,18 +252,18 @@ int env_reload(void)
 	if (drv) {
 		int ret;
 
-		pr_debug("Loading Environment from %s... ", drv->name);
+		pr_info("Loading Environment from %s... ", drv->name);
 
 		if (!env_has_inited(drv->location)) {
-			pr_debug("not initialized\n");
+			pr_info("not initialized\n");
 			return -ENODEV;
 		}
 
 		ret = drv->load();
 		if (ret){
-			pr_debug("Failed (%d)\n", ret);
+			pr_err("Failed (%d)\n", ret);
 		}else{
-			pr_debug("OK\n");
+			pr_info("OK\n");
 		}
 
 		if (!ret)
@@ -281,22 +281,22 @@ int env_save(void)
 	if (drv) {
 		int ret;
 
-		pr_debug("Saving Environment to %s... ", drv->name);
+		pr_info("Saving Environment to %s... ", drv->name);
 		if (!drv->save) {
-			pr_debug("not possible\n");
+			pr_err("not possible\n");
 			return -ENODEV;
 		}
 
 		if (!env_has_inited(drv->location)) {
-			pr_debug("not initialized\n");
+			pr_err("not initialized\n");
 			return -ENODEV;
 		}
 
 		ret = drv->save();
 		if (ret){
-			pr_debug("Failed (%d)\n", ret);
+			pr_err("Failed (%d)\n", ret);
 		}else{
-			pr_debug("OK\n");
+			pr_info("OK\n");
 		}
 
 		if (!ret)
@@ -320,12 +320,12 @@ int env_erase(void)
 		if (!env_has_inited(drv->location))
 			return -ENODEV;
 
-		pr_debug("Erasing Environment on %s... ", drv->name);
+		pr_info("Erasing Environment on %s... ", drv->name);
 		ret = drv->erase();
 		if (ret){
-			pr_debug("Failed (%d)\n", ret);
+			pr_err("Failed (%d)\n", ret);
 		}else{
-			pr_debug("OK\n");
+			pr_info("OK\n");
 		}	
 
 		if (!ret)
@@ -375,7 +375,7 @@ int env_select(const char *name)
 	int prio;
 	bool found = false;
 
-	pr_debug("Select Environment on %s: ", name);
+	pr_info("Select Environment on %s: ", name);
 
 	/* search ENV driver by name */
 	drv = ll_entry_start(struct env_driver, env_driver);
@@ -387,7 +387,7 @@ int env_select(const char *name)
 	}
 
 	if (!found) {
-		pr_debug("driver not found\n");
+		pr_info("driver not found\n");
 		return -ENODEV;
 	}
 
@@ -400,11 +400,11 @@ int env_select(const char *name)
 				gd->env_valid = ENV_INVALID;
 				gd->flags &= ~GD_FLG_ENV_DEFAULT;
 			}
-			pr_debug("OK\n");
+			pr_info("OK\n");
 			return 0;
 		}
 	}
-	pr_debug("priority not found\n");
+	pr_info("priority not found\n");
 
 	return -ENODEV;
 }

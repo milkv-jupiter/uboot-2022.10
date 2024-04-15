@@ -247,42 +247,50 @@ static int buck_set_value(struct udevice *dev, int uvolt)
 
 static int buck_set_suspend_value(struct udevice *dev, int uvolt)
 {
-	int sel, ret = -EINVAL;
-	int buck = dev->driver_data - 1;
-	const struct pm8xx_buck_desc *info = get_buck_reg(dev->parent, buck);
-
-	if (info == NULL)
-		return -ENOSYS;
-
-	sel = regulator_map_voltage_linear_range(info, uvolt, uvolt);
-	if (sel >=0) {
-		/* has get the selctor */
-		 sel <<= ffs(info->vsel_sleep_msk) - 1;
-		 ret = pmic_clrsetbits(dev->parent, info->vsel_sleep_reg, info->vsel_sleep_msk, sel);
-	}
-
-	return ret;
+	/* the hardware has already support the function */
+/**
+ *	int sel, ret = -EINVAL;
+ *	int buck = dev->driver_data - 1;
+ *	const struct pm8xx_buck_desc *info = get_buck_reg(dev->parent, buck);
+ *
+ *	if (info == NULL)
+ *		return -ENOSYS;
+ *
+ *	sel = regulator_map_voltage_linear_range(info, uvolt, uvolt);
+ *	if (sel >=0) {
+ *		 // has get the selctor
+ *		 sel <<= ffs(info->vsel_sleep_msk) - 1;
+ *		 ret = pmic_clrsetbits(dev->parent, info->vsel_sleep_reg, info->vsel_sleep_msk, sel);
+ *	}
+ *
+ *	return ret;
+ */
+	return 0;
 }
 
 static int buck_get_suspend_value(struct udevice *dev)
 {
-	int buck = dev->driver_data - 1;
-	const struct pm8xx_buck_desc *info = get_buck_reg(dev->parent, buck);
-	int mask = info->vsel_sleep_msk;
-	int ret;
-	unsigned int val;
-
-	if (info == NULL)
-		return -ENOSYS;
-
-	ret = pmic_reg_read(dev->parent, info->vsel_sleep_reg);
-	if (ret < 0)
-		return ret;
-	val = ret & mask;
-
-	val >>= ffs(mask) - 1;
-
-	return regulator_desc_list_voltage_linear_range(info, val);
+	/* the hardware has already support the function */
+/**
+ *	int buck = dev->driver_data - 1;
+ *	const struct pm8xx_buck_desc *info = get_buck_reg(dev->parent, buck);
+ *	int mask = info->vsel_sleep_msk;
+ *	int ret;
+ *	unsigned int val;
+ *
+ *	if (info == NULL)
+ *		return -ENOSYS;
+ *
+ *	ret = pmic_reg_read(dev->parent, info->vsel_sleep_reg);
+ *	if (ret < 0)
+ *		return ret;
+ *	val = ret & mask;
+ *
+ *	val >>= ffs(mask) - 1;
+ *
+ *	return regulator_desc_list_voltage_linear_range(info, val);
+ */
+	return 0;
 }
 
 static int buck_get_enable(struct udevice *dev)
@@ -429,42 +437,48 @@ static int ldo_set_value(struct udevice *dev, int uvolt)
 
 static int ldo_set_suspend_value(struct udevice *dev, int uvolt)
 {
-	int sel, ret = -EINVAL;
-	int buck = dev->driver_data - 1;
-	const struct pm8xx_buck_desc *info = get_ldo_reg(dev->parent, buck);
-
-	if (info == NULL)
-		return -ENOSYS;
-
-	sel = regulator_map_voltage_linear_range(info, uvolt, uvolt);
-	if (sel >=0) {
-		/* has get the selctor */
-		 sel <<= ffs(info->vsel_sleep_msk) - 1;
-		 ret = pmic_clrsetbits(dev->parent, info->vsel_sleep_reg, info->vsel_sleep_msk, sel);
-	}
-
-	return ret;
+/**
+ *	int sel, ret = -EINVAL;
+ *	int buck = dev->driver_data - 1;
+ *	const struct pm8xx_buck_desc *info = get_ldo_reg(dev->parent, buck);
+ *
+ *	if (info == NULL)
+ *		return -ENOSYS;
+ *
+ *	sel = regulator_map_voltage_linear_range(info, uvolt, uvolt);
+ *	if (sel >=0) {
+ *	
+ *		 sel <<= ffs(info->vsel_sleep_msk) - 1;
+ *		 ret = pmic_clrsetbits(dev->parent, info->vsel_sleep_reg, info->vsel_sleep_msk, sel);
+ *	}
+ *
+ *	return ret;
+ */
+	return 0;
 }
 
 static int ldo_get_suspend_value(struct udevice *dev)
 {
-	int buck = dev->driver_data - 1;
-	const struct pm8xx_buck_desc *info = get_ldo_reg(dev->parent, buck);
-	int mask = info->vsel_sleep_msk;
-	int ret;
-	unsigned int val;
-
-	if (info == NULL)
-		return -ENOSYS;
-
-	ret = pmic_reg_read(dev->parent, info->vsel_sleep_reg);
-	if (ret < 0)
-		return ret;
-	val = ret & mask;
-
-	val >>= ffs(mask) - 1;
-
-	return regulator_desc_list_voltage_linear_range(info, val);
+/**
+ *	int buck = dev->driver_data - 1;
+ *	const struct pm8xx_buck_desc *info = get_ldo_reg(dev->parent, buck);
+ *	int mask = info->vsel_sleep_msk;
+ *	int ret;
+ *	unsigned int val;
+ *
+ *	if (info == NULL)
+ *		return -ENOSYS;
+ *
+ *	ret = pmic_reg_read(dev->parent, info->vsel_sleep_reg);
+ *	if (ret < 0)
+ *		return ret;
+ *	val = ret & mask;
+ *
+ *	val >>= ffs(mask) - 1;
+ *
+ *	return regulator_desc_list_voltage_linear_range(info, val);
+ */
+	return 0;
 }
 
 static int ldo_get_enable(struct udevice *dev)

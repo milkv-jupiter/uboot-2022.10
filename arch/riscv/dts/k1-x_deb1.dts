@@ -104,11 +104,12 @@
 		&range GPIO_81  3 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_90  1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_91  2 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
-		&range DVL0     2 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range DVL0     1 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range DVL1     1 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS0)
 		&range GPIO_110 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_114 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_115 2 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
-		&range GPIO_123 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range GPIO_123 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS0)
 		&range GPIO_124 1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_125 3 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 	>;
@@ -182,6 +183,7 @@
 	cd-inverted;
 	cap-sd-highspeed;
 	sdh-phy-module = <0>;
+	clk-src-freq = <204800000>;
 	status = "okay";
 };
 
@@ -192,6 +194,7 @@
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
 	sdh-phy-module = <1>;
+	clk-src-freq = <375000000>;
 	status = "okay";
 };
 

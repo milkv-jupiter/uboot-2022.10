@@ -6,7 +6,11 @@
 #ifndef __GADGET__MV_UDC_H__
 #define __GADGET__MV_UDC_H__
 
+#ifdef CONFIG_SPL_BUILD
+#define NUM_ENDPOINTS		2
+#else
 #define NUM_ENDPOINTS		6
+#endif
 
 struct mv_udc {
 	u32 pad0[16];

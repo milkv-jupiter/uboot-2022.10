@@ -17,15 +17,26 @@
 #define CONFIG_SYS_SDRAM_BASE	(SYS_DRAM_OFFS + SEC_IMG_SIZE)
 
 #define RISCV_MMODE_TIMERBASE	0xE4000000
-#define RISCV_MMODE_TIMER_FREQ	1000000
-#define RISCV_SMODE_TIMER_FREQ	1000000
+#define RISCV_MMODE_TIMER_FREQ	24000000
+#define RISCV_SMODE_TIMER_FREQ	24000000
 
 #define CONFIG_IPADDR		10.0.92.253
 #define CONFIG_SERVERIP		10.0.92.134
 #define CONFIG_GATEWAYIP	10.0.92.1
 #define CONFIG_NETMASK		255.255.255.0
 
+#define DEFAULT_PRODUCT_NAME	"k1_deb1"
+
 #define K1X_SPL_BOOT_LOAD_ADDR	(0x20200000)
+#define DDR_TRAINING_DATA_BASE	(0xc0829000)
+
+// sram buffer address that save the DDR software training result
+#define DDR_TRAINING_INFO_BUFF	(0xC0800000)
+#define DDR_TRAINING_INFO_SAVE_ADDR	(0)
+// magic string: "DDRT"
+#define DDR_TRAINING_INFO_MAGIC	(0x54524444)
+// ddr training software version: xx.xx.xxxx
+#define DDR_TRAINING_INFO_VER	(0x00010000)
 
 /*
  use (ram_base+4MB offset) as the address to loading image.
@@ -66,6 +77,8 @@
 #define TLV_CODE_EEPROM_PIN_GROUP	0x82
 
 #ifndef __ASSEMBLY__
+#include "linux/types.h"
+
 enum board_boot_mode {
 	BOOT_MODE_NONE = 0,
 	BOOT_MODE_USB = 0x55a,
@@ -74,6 +87,25 @@ enum board_boot_mode {
 	BOOT_MODE_NOR,
 	BOOT_MODE_SD,
 	BOOT_MODE_SHELL = 0x55f,
+};
+
+struct ddr_training_info_t {
+	uint32_t magic;
+	uint32_t crc32;
+	uint64_t chipid;
+	uint64_t mac_addr;
+	uint32_t version;
+	uint8_t reserved[36];
+	uint8_t para[1024];
+	uint8_t reserved2[448];
+};
+
+struct boot_storage_op
+{
+	uint32_t boot_storage;
+	uint32_t address;
+	ulong (*read)(ulong byte_addr, ulong byte_size, void *buff);
+	bool (*write)(ulong byte_addr, ulong byte_size, void *buff);
 };
 #endif
 
@@ -99,7 +131,7 @@ enum board_boot_mode {
 	"qemu "
 
 #define BOOTENV_DEVICE_CONFIG \
-	"product_name=k1_deb1\0" \
+	"product_name=" DEFAULT_PRODUCT_NAME "\0" \
 	"serial#=123456789ABC\0" \
 	"manufacturer=" CONFIG_SYS_VENDOR "\0" \
 	"manufacture_date=01/16/2023 11:02:20\0" \
@@ -109,16 +141,13 @@ enum board_boot_mode {
 	"eeprom_i2c_index=" __stringify(K1_DEFALT_EEPROM_I2C_INDEX) "\0" \
 	"eeprom_pin_group=" __stringify(K1_DEFALT_EEPROM_PIN_GROUP) "\0"
 
+/*if env not use for spl, please define to board/spacemit/k1-x/k1-x.env */
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"fdt_high=0xffffffffffffffff\0" \
-	"initrd_high=0xffffffffffffffff\0" \
-	"kernel_addr_r=0x24000000\0" \
-	"kernel_comp_addr_r=0x28000000\0" \
+	"stdout_flash=serial,vidconsole\0" \
+	"kernel_comp_addr_r=0x18000000\0" \
 	"kernel_comp_size=0x4000000\0" \
-	"fdt_addr_r=0x2c000000\0" \
 	"scriptaddr=0x2c100000\0" \
-	"pxefile_addr_r=0x2c200000\0" \
-	"ramdisk_addr_r=0x2c300000\0" \
+	"pxefile_addr_r=0x0c200000\0" \
 	"ipaddr=192.168.1.15\0" \
 	"netmask=255.255.255.0\0" \
 	"serverip=10.0.92.134\0" \
@@ -126,8 +155,8 @@ enum board_boot_mode {
 	"net_data_path=spacemit_flash_file/net_flash_file/\0" \
 	"splashimage=" __stringify(CONFIG_FASTBOOT_BUF_ADDR) "\0" \
 	"splashpos=m,m\0" \
-	"splashfile=k1-x.bmp\0" \
-	BOOTENV_DEVICE_CONFIG \
-	BOOTENV
+	"splashfile=bianbu.bmp\0" \
+	BOOTENV_DEVICE_CONFIG
+
 
 #endif /* __CONFIG_H */

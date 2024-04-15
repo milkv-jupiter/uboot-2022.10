@@ -10,6 +10,7 @@
 #include <misc.h>
 #include <log.h>
 #include <i2c.h>
+#include <cpu.h>
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -20,6 +21,10 @@
 #include <fb_spacemit.h>
 #include <tlv_eeprom.h>
 #include <stdlib.h>
+#include <u-boot/crc.h>
+#include <cpu_func.h>
+#include <dt-bindings/soc/spacemit-k1x.h>
+#include <display_options.h>
 
 #define GEN_CNT			(0xD5001000)
 #define STORAGE_API_P_ADDR	(0xC0838498)
@@ -75,6 +80,9 @@
 
 extern int k1x_eeprom_init(void);
 extern int spacemit_eeprom_read(uint8_t chip, uint8_t *buffer, uint8_t id);
+extern bool get_mac_address(uint64_t *mac_addr);
+extern enum board_boot_mode get_boot_storage(void);
+extern int spl_mtd_read(struct mtd_info *mtd, ulong sector, ulong count, void *buf);
 char *product_name;
 
 int timer_init(void)
@@ -91,7 +99,7 @@ int timer_init(void)
 	return 0;
 }
 
-enum board_boot_mode get_boot_storage(void)
+enum board_boot_mode __get_boot_storage(void)
 {
 	size_t *api = (size_t*)STORAGE_API_P_ADDR;
 	size_t address = *api;
@@ -105,7 +113,7 @@ enum board_boot_mode get_boot_storage(void)
 void fix_boot_mode(void)
 {
 	if (0 == readl((void *)BOOT_DEV_FLAG_REG))
-		set_boot_mode(get_boot_storage());
+		set_boot_mode(__get_boot_storage());
 }
 
 void board_pinctrl_setup(void)
@@ -117,6 +125,80 @@ void board_pinctrl_setup(void)
 	writel(MUX_MODE0 | EDGE_NONE | PULL_UP | PAD_3V_DS4, (void __iomem *)MFPR_MMC1_BASE + MMC1_DATA0_OFFSET);
 	writel(MUX_MODE0 | EDGE_NONE | PULL_UP | PAD_3V_DS4, (void __iomem *)MFPR_MMC1_BASE + MMC1_CMD_OFFSET);
 	writel(MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_3V_DS4, (void __iomem *)MFPR_MMC1_BASE + MMC1_CLK_OFFSET);
+}
+
+static uint32_t adjust_cpu_freq(uint64_t cluster, uint32_t freq)
+{
+	uint32_t freq_act=freq, val;
+
+	/* switch cpu clock source */
+	val = readl((void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
+	val &= ~(0x07 | BIT(13));
+	switch(freq) {
+	case 1600000:
+		val |= 0x07;
+		break;
+
+	case 1228000:
+		val |= 0x04;
+		break;
+
+	case 819000:
+		val |= 0x01;
+		break;
+
+	case 614000:
+	default:
+		freq_act = 614000;
+		val |= 0x00;
+		break;
+	}
+	writel(val, (void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
+
+	/* set cluster frequency change request, and wait done */
+	val = readl((void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
+	val |= BIT(12);
+	writel(val, (void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4));
+	while(readl((void __iomem *)(K1X_APMU_BASE + 0x38c + cluster*4)) & BIT(12));
+
+	return freq_act;
+}
+
+void raise_cpu_frequency(void)
+{
+	uint32_t val, cpu_freq;
+	struct udevice *cpu;
+
+	writel(0x2dffff, (void __iomem *)0xd4051024);
+
+	/* enable CLK_1228M */
+	val = readl((void __iomem *)(K1X_MPMU_BASE + 0x1024));
+	val |= BIT(16) | BIT(15) | BIT(14) | BIT(13);
+	writel(val, (void __iomem *)(K1X_MPMU_BASE + 0x1024));
+
+	/* enable PLL3(3200Mhz) */
+	val = readl((void __iomem *)(K1X_APB_SPARE_BASE + 0x12C));
+	val |= BIT(31);
+	writel(val, (void __iomem *)(K1X_APB_SPARE_BASE + 0x12C));
+	/* enable PLL3_DIV2 */
+	val = readl((void __iomem *)(K1X_APB_SPARE_BASE + 0x128));
+	val |= BIT(1);
+	writel(val, (void __iomem *)(K1X_APB_SPARE_BASE + 0x128));
+
+	cpu = cpu_get_current_dev();
+	if(dev_read_u32u(cpu, "boot_freq_cluster0", &cpu_freq)) {
+		pr_info("boot_freq_cluster0 not configured, use 1228000 as default!\n");
+		cpu_freq = 1228000;
+	}
+	cpu_freq = adjust_cpu_freq(0, cpu_freq);
+	pr_info("adjust cluster-0 frequency to %u ...	[done]\n", cpu_freq);
+
+	if(dev_read_u32u(cpu, "boot_freq_cluster1", &cpu_freq)) {
+		pr_info("boot_freq_cluster1 not configured, use 1228000 as default!\n");
+		cpu_freq = 614000;
+	}
+	cpu_freq = adjust_cpu_freq(1, cpu_freq);
+	pr_info("adjust cluster-1 frequency to %u ...	[done]\n", cpu_freq);
 }
 
 #if CONFIG_IS_ENABLED(SPACEMIT_K1X_EFUSE)
@@ -143,6 +225,36 @@ int load_board_config_from_efuse(int *eeprom_i2c_index,
 		*eeprom_pin_group = (fuses[0] >> 4) & 0x03;
 		// byte1 bit0~3 is pmic type
 		*pmic_type = fuses[1] & 0x0F;
+	}
+
+	return ret;
+}
+
+int load_chipid_from_efuse(uint64_t *chipid)
+{
+	struct udevice *dev;
+	uint8_t fuses[32];
+	int ret;
+
+	/* retrieve the device */
+	ret = uclass_get_device_by_driver(UCLASS_MISC,
+			DM_DRIVER_GET(spacemit_k1x_efuse), &dev);
+	if (ret) {
+		return ret;
+	}
+
+	// read from efuse, each bank has 32byte efuse data
+	ret = misc_read(dev, 7 * 32 + 0, fuses, sizeof(fuses));
+	if (0 == ret) {
+		// bit191~251 is chipid
+		// 1. get bit 192~251
+		// 2. left shift 1bit, and merge with efuse_bank[7].bit191
+		*chipid = 0;
+		memcpy(chipid, &fuses[24], 8);
+		*chipid <<= 4;
+		*chipid >>= 3;
+		*chipid |= (fuses[23] & 0x80) >> 7;
+		pr_debug("Get chipid %llx\n", *chipid);
 	}
 
 	return ret;
@@ -191,10 +303,132 @@ void load_board_config(int *eeprom_i2c_index, int *eeprom_pin_group, int *pmic_t
 	pr_debug("pmic_type :%d\n", *pmic_type);
 }
 
+static ulong read_boot_storage_emmc(ulong byte_addr, ulong byte_size, void *buff)
+{
+	ulong ret;
+	//select mmc device(MUST be align with spl.dts): 0:sd, 1:emmc
+	struct blk_desc *dev_desc = blk_get_dev("mmc", 1);
+	if (!dev_desc || dev_desc->type == DEV_TYPE_UNKNOWN) {
+		pr_err("invalid mmc device\n");
+		return 0;
+	}
+
+	blk_dselect_hwpart(dev_desc, 0);
+	ret = blk_dread(dev_desc,
+		byte_addr / dev_desc->blksz,
+		byte_size / dev_desc->blksz, buff);
+	return dev_desc->blksz * ret;
+}
+
+static ulong read_boot_storage_sdcard(ulong byte_addr, ulong byte_size, void *buff)
+{
+	ulong ret;
+	//select sdcard device(MUST be align with spl.dts): 0:sd, 1:emmc
+	struct blk_desc *dev_desc = blk_get_dev("mmc", 0);
+	if (!dev_desc || dev_desc->type == DEV_TYPE_UNKNOWN) {
+		pr_err("invalid sdcard device\n");
+		return 0;
+	}
+
+	ret = blk_dread(dev_desc,
+		byte_addr / dev_desc->blksz,
+		byte_size / dev_desc->blksz, buff);
+	return dev_desc->blksz * ret;
+}
+
+static ulong read_boot_storage_spinor(ulong byte_addr, ulong byte_size, void *buff)
+{
+	struct mtd_info *mtd;
+	const char* part = "private";
+
+	mtd_probe_devices();
+	mtd = get_mtd_device_nm(part);
+	if ((NULL != mtd) && (0 == spl_mtd_read(mtd, byte_addr, byte_size, buff))) {
+		// print_buffer(0, buff, 1, byte_size, 16);
+		return byte_size;
+	}
+	else
+		return 0;
+}
+
+static const struct boot_storage_op storage_read[] = {
+	{BOOT_MODE_EMMC, 0x10000, read_boot_storage_emmc, NULL},
+	{BOOT_MODE_SD, 0x10000, read_boot_storage_sdcard, NULL},
+	{BOOT_MODE_NOR, 0, read_boot_storage_spinor, NULL},
+};
+
+static ulong read_training_info(void *buff, ulong byte_size)
+{
+	int i;
+	// read data from boot storage
+	enum board_boot_mode boot_storage = get_boot_storage();
+
+	for (i = 0; i < ARRAY_SIZE(storage_read); i++) {
+		if (boot_storage == storage_read[i].boot_storage)
+			return storage_read[i].read(storage_read[i].address, byte_size, buff);
+	}
+
+	return 0;
+}
+
+bool restore_ddr_training_info(uint64_t chipid, uint64_t mac_addr)
+{
+	bool success = true;
+	struct ddr_training_info_t *info;
+	ulong flush_start, flush_lenth;
+
+	pr_debug("chipid %llx\n", chipid);
+	pr_debug("mac_addr %llx\n", mac_addr);
+
+	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
+	if ((sizeof(*info) != read_training_info(info, sizeof(*info))) ||
+		(DDR_TRAINING_INFO_MAGIC != info->magic) ||
+		(chipid != info->chipid) ||
+		(mac_addr != info->mac_addr) ||
+		(DDR_TRAINING_INFO_VER != info->version) ||
+		(info->crc32 != crc32(0, (const uchar *)info->para, sizeof(*info) - 8))) {
+		// clear magic, set invalid
+		memset(info, 0, sizeof(*info));
+		success = false;
+	}
+
+	flush_start = round_down((size_t)info, CONFIG_RISCV_CBOM_BLOCK_SIZE);
+	flush_lenth = round_up(sizeof(*info), CONFIG_RISCV_CBOM_BLOCK_SIZE);
+	flush_dcache_range(flush_start, flush_start + flush_lenth);
+	return success;
+}
+
+void update_ddr_training_info(uint64_t chipid, uint64_t mac_addr)
+{
+	struct ddr_training_info_t *info;
+	// ulong flush_start, flush_lenth;
+
+	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
+	if ((DDR_TRAINING_INFO_MAGIC == info->magic) &&
+		(info->crc32 == crc32(0, (const uchar *)info->para, sizeof(*info) - 8))) {
+		// NO need to save ddr trainig info
+		info->magic = 0;
+		}
+	else {
+		// first time to do ddr training or ddr training info is update
+		info->magic = DDR_TRAINING_INFO_MAGIC;
+		info->chipid = chipid;
+		info->mac_addr = mac_addr;
+		info->version = DDR_TRAINING_INFO_VER;
+		info->crc32 = crc32(0, (const uchar *)info->para, sizeof(*info) - 8);
+	}
+
+	// flush_start = round_down((size_t)info, CONFIG_RISCV_CBOM_BLOCK_SIZE);
+	// flush_lenth = round_up(sizeof(*info), CONFIG_RISCV_CBOM_BLOCK_SIZE);
+	// flush_dcache_range(flush_start, flush_start + flush_lenth);
+}
+
 int spl_board_init_f(void)
 {
 	int ret;
 	struct udevice *dev;
+	bool flag;
+	uint64_t chipid = 0, mac_addr = 0;
 
 #if CONFIG_IS_ENABLED(SYS_I2C_LEGACY)
 	/* init i2c */
@@ -205,6 +439,21 @@ int spl_board_init_f(void)
 	board_pmic_init();
 #endif
 
+	raise_cpu_frequency();
+#if CONFIG_IS_ENABLED(SPACEMIT_K1X_EFUSE)
+	load_chipid_from_efuse(&chipid);
+#endif
+	get_mac_address(&mac_addr);
+
+	// restore prevous saved ddr training info data
+	flag = restore_ddr_training_info(chipid, mac_addr);
+	if (!flag) {
+		// flush data and stack
+		flush_dcache_range(CONFIG_SPL_BSS_START_ADDR, CONFIG_SPL_STACK);
+		icache_disable();
+		dcache_disable();
+	}
+
 	/* DDR init */
 	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
 	if (ret) {
@@ -212,6 +461,12 @@ int spl_board_init_f(void)
 		return ret;
 	}
 
+	if (!flag) {
+		icache_enable();
+		dcache_enable();
+	}
+
+	update_ddr_training_info(chipid, mac_addr);
 	timer_init();
 
 	return 0;
@@ -248,7 +503,7 @@ int board_fit_config_name_match(const char *name)
 
 	buildin_name = product_name;
 	if (NULL == buildin_name)
-		buildin_name = env_get("product_name");
+		buildin_name = DEFAULT_PRODUCT_NAME;
 
 	if ((NULL != buildin_name) && (0 == strcmp(buildin_name, name))) {
 		pr_debug("Boot from fit configuration %s\n", name);
@@ -344,6 +599,20 @@ static void spl_load_env(void)
 	}
 }
 
+bool get_mac_address(uint64_t *mac_addr)
+{
+	int eeprom_addr;
+
+	eeprom_addr = k1x_eeprom_init();
+	if ((eeprom_addr >= 0) && (NULL != mac_addr) && (0 == spacemit_eeprom_read(
+		eeprom_addr, (uint8_t*)mac_addr, TLV_CODE_MAC_BASE))) {
+		pr_info("Get mac address %llx from eeprom\n", *mac_addr);
+		return true;
+	}
+
+	return false;
+}
+
 char *get_product_name(void)
 {
 	char *name = NULL;
@@ -360,7 +629,7 @@ char *get_product_name(void)
 	if (NULL != name)
 		free(name);
 
-	pr_debug("Use default product name %s\n", env_get("product_name"));
+	pr_debug("Use default product name %s\n", DEFAULT_PRODUCT_NAME);
 	return NULL;
 }
 

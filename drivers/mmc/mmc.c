@@ -1790,6 +1790,12 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
 		return 0;
 	}
 
+#if CONFIG_IS_ENABLED(MMC_WRITE)
+	err = sd_read_ssr(mmc);
+	if (err)
+		pr_warn("unable to read ssr\n");
+#endif
+
 	/* Restrict card's capabilities by what the host can do */
 	caps = card_caps & mmc->host_caps;
 
@@ -1834,11 +1840,6 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
 				}
 #endif
 
-#if CONFIG_IS_ENABLED(MMC_WRITE)
-				err = sd_read_ssr(mmc);
-				if (err)
-					pr_warn("unable to read ssr\n");
-#endif
 				if (!err)
 					return 0;
 

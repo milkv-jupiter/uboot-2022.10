@@ -179,7 +179,7 @@ void fastboot_blk_flash_write(const char *cmd, void *download_buffer,
 	static struct flash_dev *fdev = NULL;
 	u32 __maybe_unused fsbl_offset = 0;
 	/*save crc value to compare after flash image*/
-	u32 crc_val = 0;
+	u64 compare_val = 0;
 
 	if (fdev == NULL){
 		fdev = malloc(sizeof(struct flash_dev));
@@ -246,8 +246,9 @@ void fastboot_blk_flash_write(const char *cmd, void *download_buffer,
 #ifdef CONFIG_SPACEMIT_FLASH
 		/*if download and flash div to many time, that the crc is not correct*/
 		printf("write_raw_image, \n");
-		crc_val = crc32_wd(crc_val, (const uchar *)download_buffer, download_bytes, CHUNKSZ_CRC32);
-		if (check_blk_image_crc(dev_desc, crc_val, info.start, info.blksz, download_bytes))
+		// compare_val = crc32_wd(compare_val, (const uchar *)download_buffer, download_bytes, CHUNKSZ_CRC32);
+		compare_val += checksum64(download_buffer, download_bytes);
+		if (compare_blk_image_val(dev_desc, compare_val, info.start, info.blksz, download_bytes))
 			fastboot_fail("compare crc fail", response);
 #endif
 	}

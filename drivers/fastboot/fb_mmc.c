@@ -521,7 +521,7 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 	static struct flash_dev *fdev = NULL;
 	u32 __maybe_unused fsbl_offset = 0;
 	/*save crc value to compare after flash image*/
-	u32 crc_val = 0;
+	u64 compare_val = 0;
 
 	if (fdev == NULL){
 		fdev = malloc(sizeof(struct flash_dev));
@@ -538,13 +538,13 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 		printf("init fdev success\n");
 	}
 
-	/*flash env*/
-	if (strcmp(cmd, "env") == 0) {
-		printf("flash env to emmc\n");
-		fastboot_oem_flash_env(cmd, fastboot_buf_addr, download_bytes,
-								response, fdev);
-		return;
-	}
+	/* flash env */
+	/*if (strcmp(cmd, "env") == 0) {*/
+	/*	printf("flash env to emmc\n");*/
+	/*	fastboot_oem_flash_env(cmd, fastboot_buf_addr, download_bytes,*/
+	/*							response, fdev);*/
+	/*	return;*/
+	/*}*/
 	if (strcmp(cmd, "bootinfo") == 0) {
 		printf("flash bootinfo\n");
 		fastboot_oem_flash_bootinfo(cmd, fastboot_buf_addr, download_bytes,
@@ -699,8 +699,9 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 #ifdef CONFIG_SPACEMIT_FLASH
 		/*if download and flash div to many time, that the crc is not correct*/
 		printf("write_raw_image end\n");
-		crc_val = crc32_wd(crc_val, (const uchar *)download_buffer, download_bytes, CHUNKSZ_CRC32);
-		if (check_blk_image_crc(dev_desc, crc_val, info.start, info.blksz, download_bytes))
+		// compare_val = crc32_wd(compare_val, (const uchar *)download_buffer, download_bytes, CHUNKSZ_CRC32);
+		compare_val += checksum64(download_buffer, download_bytes);
+		if (compare_blk_image_val(dev_desc, compare_val, info.start, info.blksz, download_bytes))
 			fastboot_fail("compare crc fail", response);
 #endif
 	}

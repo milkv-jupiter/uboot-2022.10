@@ -55,7 +55,7 @@ static void print_one_part(dos_partition_t *p, lbaint_t ext_part_sector,
 	lbaint_t lba_start = ext_part_sector + get_unaligned_le32(p->start4);
 	lbaint_t lba_size  = get_unaligned_le32(p->size4);
 
-	pr_debug("%3d\t%-10" LBAFlength "u\t%-10" LBAFlength
+	pr_info("%3d\t%-10" LBAFlength "u\t%-10" LBAFlength
 		"u\t%08x-%02x\t%02x%s%s\n",
 		part_num, lba_start, lba_size, disksig, part_num, p->sys_ind,
 		(is_extended(p->sys_ind) ? " Extd" : ""),
@@ -305,7 +305,7 @@ static int part_get_info_extended(struct blk_desc *dev_desc,
 
 static void __maybe_unused part_print_dos(struct blk_desc *dev_desc)
 {
-	pr_debug("Part\tStart Sector\tNum Sectors\tUUID\t\tType\n");
+	pr_info("Part\tStart Sector\tNum Sectors\tUUID\t\tType\n");
 	print_partition_extended(dev_desc, 0, 0, 1, 0);
 }
 

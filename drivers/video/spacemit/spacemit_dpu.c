@@ -248,7 +248,7 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 	while (ofnode_valid(remote)) {
 		remote = ofnode_get_parent(remote);
 		if (!ofnode_valid(remote)) {
-			pr_info("%s(%s): no UCLASS_DISPLAY for remote-endpoint\n",
+			pr_debug("%s(%s): no UCLASS_DISPLAY for remote-endpoint\n",
 			      __func__, dev_read_name(dev));
 			return -EINVAL;
 		}
@@ -411,7 +411,7 @@ static int spacemit_dpu_probe(struct udevice *dev)
 
 		ret = spacemit_display_init(dev, plat->base, node);
 		if (ret)
-			pr_info("Device failed: ret=%d\n", ret);
+			pr_debug("Device failed: ret=%d\n", ret);
 		if (!ret)
 			break;
 	}

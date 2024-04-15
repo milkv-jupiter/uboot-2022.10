@@ -143,7 +143,7 @@ void fastboot_boot(void)
 
 		snprintf(boot_addr_start, sizeof(boot_addr_start) - 1,
 			 "0x%p", fastboot_buf_addr);
-		pr_debug("Booting kernel at %s...\n\n\n", boot_addr_start);
+		pr_info("Booting kernel at %s...\n\n\n", boot_addr_start);
 
 		do_bootm(NULL, 0, 2, bootm_args);
 
