@@ -944,7 +944,7 @@ int board_fit_config_name_match(const char *name)
 	char *product_name = env_get("product_name");
 
 	if ((NULL != product_name) && (0 == strcmp(product_name, name))) {
-		pr_debug("Boot from fit configuration %s\n", name);
+		log_emerg("Boot from fit configuration %s\n", name);
 		return 0;
 	}
 	else

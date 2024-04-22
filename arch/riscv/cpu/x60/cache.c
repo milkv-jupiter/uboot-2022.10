@@ -100,6 +100,51 @@ int dcache_status(void)
 	return ret;
 }
 
+
+void branch_predict_enable(void)
+{
+
+#if !CONFIG_IS_ENABLED(SYS_BRANCH_PREDICT_OFF)
+#if CONFIG_SPL_BUILD && CONFIG_SPL_RISCV_MMODE
+	/* csr:0x7c0 can be accessed in MMODE only */
+	csr_set(0x7c0, 0x10);
+#endif
+#endif
+}
+
+void branch_predict_disable(void)
+{
+#if !CONFIG_IS_ENABLED(SYS_BRANCH_PREDICT_OFF)
+#if CONFIG_SPL_BUILD && CONFIG_SPL_RISCV_MMODE
+	/* csr:0x7c0 can be accessed in MMODE only */
+	csr_clear(0x7c0, 0x10);
+#endif
+#endif
+}
+
+void prefetch_enable(void)
+{
+
+#if !CONFIG_IS_ENABLED(SYS_PREFETCH_OFF)
+#if CONFIG_SPL_BUILD && CONFIG_SPL_RISCV_MMODE
+	/* csr:0x7c0 can be accessed in MMODE only */
+	csr_set(0x7c0, 0x20);
+#endif
+#endif
+}
+
+void prefetch_disable(void)
+{
+#if !CONFIG_IS_ENABLED(SYS_PREFETCH_OFF)
+#if CONFIG_SPL_BUILD && CONFIG_SPL_RISCV_MMODE
+	/* csr:0x7c0 can be accessed in MMODE only */
+	csr_clear(0x7c0, 0x20);
+#endif
+#endif
+}
+
+
+
 int check_cache_range(unsigned long start, unsigned long end)
 {
 	int ok = 1;
@@ -136,6 +181,17 @@ void flush_dcache_range(unsigned long start, unsigned long end)
 
 	while (start < end) {
 		cbo_flush(start);
+		start += CONFIG_RISCV_CBOM_BLOCK_SIZE;
+	}
+}
+
+void clean_dcache_range(unsigned long start, unsigned long end)
+{
+	if (!check_cache_range(start, end))
+		return;
+
+	while (start < end) {
+		cbo_clean(start);
 		start += CONFIG_RISCV_CBOM_BLOCK_SIZE;
 	}
 }

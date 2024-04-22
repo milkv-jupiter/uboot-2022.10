@@ -61,6 +61,30 @@ config SPL_SYS_ICACHE_OFF
 	help
 	  Do not enable instruction cache in SPL.
 
+config SYS_BRANCH_PREDICT_OFF
+	bool "Do not enable branch predict"
+	help
+	  Do not enable instruction branch predict in U-Boot.
+
+config SPL_SYS_BRANCH_PREDICT_OFF
+	bool "Do not enable branch predict in SPL"
+	depends on SPL
+	default SYS_BRANCH_PREDICT_OFF
+	help
+	  Do not enable instruction branch predict in SPL.
+
+config SYS_PREFETCH_OFF
+	bool "Do not enable prefetch"
+	help
+	  Do not enable instruction prefetch in U-Boot.
+
+config SPL_SYS_PREFETCH_OFF
+	bool "Do not enable prefetch in SPL"
+	depends on SPL
+	default SYS_PREFETCH_OFF
+	help
+	  Do not enable instruction prefetch in SPL.
+
 config SYS_DCACHE_OFF
 	bool "Do not enable dcache"
 	help

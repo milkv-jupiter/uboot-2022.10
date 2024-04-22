@@ -652,20 +652,6 @@ config MCP4725
 	  Support for the mcp4725 device, which is a simple DAC chip used
 	  for i2c debug.
 
-config SPACEMIT_ONBOARD_USB_HUB
-	tristate "Spacemit onboard USB hub support"
-	default SOC_SPACEMIT_K1X
-	help
-	  Say Y here if you want to support onboard usb hubs on Spacemit
-	  platform. If unsure, say Y when compile for Spacemit platform.
-
-config SPL_SPACEMIT_ONBOARD_USB_HUB
-	tristate "Spacemit onboard USB hub support in SPL"
-	default SOC_SPACEMIT_K1X
-	help
-	  Say Y here if you want to support onboard usb hubs on Spacemit
-	  platform in SPL.
-
 config SPACEMIT_K1X_EFUSE
 	bool "Spacemit K1x soc eFUSE operation support"
 	depends on MISC

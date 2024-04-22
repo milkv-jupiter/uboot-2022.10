@@ -17,6 +17,7 @@
 #include <dm.h>
 #include "ehci.h"
 #include <stdbool.h>
+#include <power/regulator.h>
 
 /* PMU */
 #define PMU_SD_ROT_WAKE_CLR				0x7C
@@ -28,7 +29,17 @@ struct ehci_mv_priv {
 	struct reset_ctl_bulk resets;
 	struct phy phy;
 	void __iomem *apmu_base;
+	struct udevice *vbus_supply;
 };
+
+static int mv_ehci_enable_vbus_supply(struct udevice *dev, bool enable)
+{
+	struct ehci_mv_priv *priv = dev_get_priv(dev);
+	if (priv->vbus_supply)
+		return regulator_set_enable(priv->vbus_supply, enable);
+	else
+		return 0;
+}
 
 static void mv_ehci_enable(struct udevice *dev, bool enable)
 {
@@ -99,6 +110,19 @@ static int ehci_mv_probe(struct udevice *dev)
 	dev_info(dev, "ehci-k1x-ci: init hccr %lx and hcor %lx hc_length %ld\n",
 		  (uintptr_t)hccr, (uintptr_t)hcor, (uintptr_t)HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
 
+	err = device_get_supply_regulator(dev, "vbus-supply",
+					  &priv->vbus_supply);
+	if (err && err != -ENOENT) {
+		dev_err(dev, "Failed to retrieve vbus-supply regulator, (err=%d)", err);
+		goto err_vbus;
+	}
+	err = mv_ehci_enable_vbus_supply(dev, true);
+	if (err) {
+		dev_err(dev, "Failed to enable vbus (err=%d)\n", err);
+		priv->vbus_supply = NULL;
+		goto err_vbus;
+	}
+
 	err = ehci_register(dev, hccr, hcor, NULL, 0, USB_INIT_HOST);
 	if (err)
 		goto err_vbus;
@@ -106,6 +130,7 @@ static int ehci_mv_probe(struct udevice *dev)
 	return 0;
 
 err_vbus:
+	mv_ehci_enable_vbus_supply(dev, false);
 	mv_ehci_enable(dev, false);
 	ehci_shutdown_phy(dev, &priv->phy);
 err_reset:
@@ -124,6 +149,7 @@ static int ehci_usb_remove(struct udevice *dev)
 	if (ret)
 		return ret;
 
+	mv_ehci_enable_vbus_supply(dev, false);
 	mv_ehci_enable(dev, false);
 
 	ret = ehci_shutdown_phy(dev, &priv->phy);

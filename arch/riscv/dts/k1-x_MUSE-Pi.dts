@@ -8,7 +8,7 @@
 #include "k1-x_spm8821.dtsi"
 
 / {
-	model = "spacemit k1-x mingo board";
+	model = "spacemit k1-x MUSE-Pi board";
 
 	aliases {
 		efuse_power = &ldo_31;
@@ -24,15 +24,18 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-	usb3hub:usb3hub {
+	usb2hub: usb2hub {
 		compatible = "spacemit,usb-hub";
-		hub-gpios = <
-			&gpio 123 0	/* usb3 hub en */
-			&gpio 124 0>;	/* usb3 hub rst*/
-		vbus-gpios = <&gpio 97 0>;	/* gpio_97 for usb3 hub output vbus */
-		regulator-force-boot-off;
+		vbus-gpios = <&gpio 123 0>;	/* for usb2 hub output vbus */
 		status = "okay";
 	};
+
+	usb3hub: usb3hub {
+		compatible = "spacemit,usb-hub";
+		vbus-gpios = <&gpio 79 0>;	/* gpio_79 for usb3 pwren */
+		status = "okay";
+	};
+
 };
 
 &cpu_0 {
@@ -55,6 +58,14 @@
 	status = "okay";
 };
 
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
 &i2c2 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -70,22 +81,40 @@
 	};
 };
 
+&i2c3 {
+	status = "disabled";
+};
+
 &i2c4 {
 	clock-frequency = <400000>;
 	status = "okay";
+};
+
+&i2c5 {
+	status = "disabled";
+};
+
+&i2c6 {
+	status = "disabled";
+};
+
+&i2c7 {
+	status = "disabled";
 };
 
 &pinctrl {
 	pinctrl-single,gpio-range = <
 		&range GPIO_49  2 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_3V_DS4)
 		&range GPIO_58  1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
-		&range GPIO_63  2 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range GPIO_63  1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range GPIO_64  1 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_65  1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_66  2 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range PRI_TDI  2 (MUX_MODE1 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range PRI_TCK  1 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range PRI_TDO  1 (MUX_MODE1 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_74  1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
+		&range GPIO_79  1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_80  1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_3V_DS4)
 		&range GPIO_81  3 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_90  1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
@@ -99,6 +128,12 @@
 		&range GPIO_125 3 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 	>;
 
+	usbp1_vbus: usbp1_vbus {
+		pinctrl-single,pins =<
+			K1X_PADCONF(GPIO_66, MUX_MODE0, (EDGE_NONE | PULL_UP | PAD_1V8_DS2))    /* drive_vbus1_iso */
+		>;
+	};
+
 	gpio80_pmx_func0: gpio80_pmx_func0 {
 		pinctrl-single,pins = <
 			K1X_PADCONF(GPIO_80, MUX_MODE0, (EDGE_BOTH | PULL_UP | PAD_3V_DS4))  /* mmc cd */
@@ -110,9 +145,11 @@
 	gpio-ranges = <
 		&pinctrl 49 GPIO_49 2
 		&pinctrl 58 GPIO_58 1
-		&pinctrl 63 GPIO_63 5
+		&pinctrl 63 GPIO_63 1
+		&pinctrl 65 GPIO_65 3
 		&pinctrl 70 PRI_TDI 4
 		&pinctrl 74 GPIO_74 1
+		&pinctrl 79 GPIO_79 1
 		&pinctrl 80 GPIO_80 4
 		&pinctrl 90 GPIO_90 3
 		&pinctrl 96 DVL0 2
@@ -126,6 +163,15 @@
 	status = "okay";
 };
 
+&usbphy1 {
+	status = "okay";
+};
+
+&ehci1 {
+	vbus-supply = <&usb2hub>;
+	status = "okay";
+};
+
 &usb2phy {
 	status = "okay";
 };
@@ -133,6 +179,7 @@
 &combphy {
 	status = "okay";
 };
+
 
 &usbdrd3 {
 	status = "okay";
@@ -156,6 +203,7 @@
 	cd-inverted;
 	cap-sd-highspeed;
 	sdh-phy-module = <0>;
+	clk-src-freq = <204800000>;
 	status = "okay";
 };
 
@@ -166,6 +214,7 @@
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
 	sdh-phy-module = <1>;
+	clk-src-freq = <375000000>;
 	status = "okay";
 };
 
@@ -198,13 +247,17 @@
 	};
 };
 
+&pcie0_rc {
+	status = "disabled";
+};
+
 &pcie1_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie1_3>;
 	status = "okay";
 };
 
-&qspi {
+/*&qspi {
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_qspi>;
@@ -217,9 +270,30 @@
 		broken-flash-reset;
 		status = "okay";
 	};
-};
+};*/
 
 &efuse {
 	status = "okay";
 };
 
+&dpu {
+	status = "okay";
+};
+
+&hdmi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hdmi_0>;
+	status = "okay";
+};
+
+&mipi_dsi {
+	status = "disabled";
+};
+
+&panel {
+	dcp-gpios = <&gpio 82 0>;
+	dcn-gpios = <&gpio 83 0>;
+	bl-gpios = <&gpio 44 0>;
+	reset-gpios = <&gpio 81 0>;
+	status = "disabled";
+};

@@ -90,5 +90,4 @@ obj-$(CONFIG_ESM_K3) += k3_esm.o
 obj-$(CONFIG_ESM_PMIC) += esm_pmic.o
 obj-$(CONFIG_SL28CPLD) += sl28cpld.o
 obj-$(CONFIG_MCP4725) += mcp4725.o
-obj-$(CONFIG_$(SPL_)SPACEMIT_ONBOARD_USB_HUB) += spacemit-onboard-hub.o
 obj-$(CONFIG_$(SPL_)SPACEMIT_K1X_EFUSE) += spacemit_k1x_efuse.o

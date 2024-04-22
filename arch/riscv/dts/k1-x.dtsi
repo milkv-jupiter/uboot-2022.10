@@ -366,11 +366,6 @@
 			status = "disabled";
 		};
 
-		usb3hub: usb3hub@0 {
-			compatible = "spacemit,usb3-hub";
-			status = "disabled";
-		};
-
 		usbdrd3: usb3@0 {
 			compatible = "spacemit,k1-x-dwc3";
 			#address-cells = <2>;

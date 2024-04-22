@@ -195,6 +195,10 @@ wait_for_gd_init:
 	jal	icache_enable
 	jal	dcache_enable
 
+	/* Enable prefetch and branch predict*/
+	jal branch_predict_enable
+	jal prefetch_enable
+
 #ifdef CONFIG_DEBUG_UART
 	jal	debug_uart_init
 #endif
