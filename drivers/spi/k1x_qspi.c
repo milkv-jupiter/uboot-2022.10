@@ -814,8 +814,11 @@ static int k1x_qspi_adjust_op_size(struct spi_slave *slave,
 		if (op->data.nbytes > qspi->tx_unit_size)
 			op->data.nbytes = qspi->tx_unit_size;
 	} else {
-		if (op->data.nbytes > qspi->rx_unit_size)
+		if (op->data.nbytes > qspi->rx_unit_size) {
 			op->data.nbytes = qspi->rx_unit_size;
+		} else if (op->data.nbytes > qspi->rxfifo - 4 && !IS_ALIGNED(op->data.nbytes, 4)) {
+			op->data.nbytes = qspi->rxfifo - 4;
+		}
 	}
 
 	return 0;

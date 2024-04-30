@@ -82,9 +82,11 @@ extern int __data_start[], __data_end[];
 extern int k1x_eeprom_init(void);
 extern int spacemit_eeprom_read(uint8_t chip, uint8_t *buffer, uint8_t id);
 extern bool get_mac_address(uint64_t *mac_addr);
+extern bool get_ddr_cs_number(uint32_t *cs_num);
 extern enum board_boot_mode get_boot_storage(void);
 extern int spl_mtd_read(struct mtd_info *mtd, ulong sector, ulong count, void *buf);
 char *product_name;
+extern u32 ddr_cs_num;
 
 int timer_init(void)
 {
@@ -389,7 +391,7 @@ bool restore_ddr_training_info(uint64_t chipid, uint64_t mac_addr)
 		(chipid != info->chipid) ||
 		(mac_addr != info->mac_addr) ||
 		(DDR_TRAINING_INFO_VER != info->version) ||
-		(info->crc32 != crc32(0, (const uchar *)info->para, sizeof(*info) - 8))) {
+		(info->crc32 != crc32(0, (const uchar *)&info->chipid, sizeof(*info) - 8))) {
 		// clear magic, set invalid
 		memset(info, 0, sizeof(*info));
 		success = false;
@@ -397,7 +399,7 @@ bool restore_ddr_training_info(uint64_t chipid, uint64_t mac_addr)
 
 	flush_start = round_down((size_t)info, CONFIG_RISCV_CBOM_BLOCK_SIZE);
 	flush_lenth = round_up(sizeof(*info), CONFIG_RISCV_CBOM_BLOCK_SIZE);
-	clean_dcache_range(flush_start, flush_start + flush_lenth);
+	flush_dcache_range(flush_start, flush_start + flush_lenth);
 	return success;
 }
 
@@ -408,7 +410,7 @@ void update_ddr_training_info(uint64_t chipid, uint64_t mac_addr)
 
 	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
 	if ((DDR_TRAINING_INFO_MAGIC == info->magic) &&
-		(info->crc32 == crc32(0, (const uchar *)info->para, sizeof(*info) - 8))) {
+		(info->crc32 == crc32(0, (const uchar *)&info->chipid, sizeof(*info) - 8))) {
 		// NO need to save ddr trainig info
 		info->magic = 0;
 		}
@@ -418,12 +420,24 @@ void update_ddr_training_info(uint64_t chipid, uint64_t mac_addr)
 		info->chipid = chipid;
 		info->mac_addr = mac_addr;
 		info->version = DDR_TRAINING_INFO_VER;
-		info->crc32 = crc32(0, (const uchar *)info->para, sizeof(*info) - 8);
+		info->crc32 = crc32(0, (const uchar *)&info->chipid, sizeof(*info) - 8);
 	}
 
 	// flush_start = round_down((size_t)info, CONFIG_RISCV_CBOM_BLOCK_SIZE);
 	// flush_lenth = round_up(sizeof(*info), CONFIG_RISCV_CBOM_BLOCK_SIZE);
-	// clean_dcache_range(flush_start, flush_start + flush_lenth);
+	// flush_dcache_range(flush_start, flush_start + flush_lenth);
+}
+
+void update_ddr_config_info(uint32_t cs_num)
+{
+	struct ddr_training_info_t *info;
+
+	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
+
+	info->magic = DDR_TRAINING_INFO_MAGIC;
+	info->version = DDR_TRAINING_INFO_VER;
+	info->cs_num = cs_num;
+	info->crc32 = crc32(0, (const uchar *)&info->chipid, sizeof(*info) - 8);
 }
 
 int spl_board_init_f(void)
@@ -431,7 +445,7 @@ int spl_board_init_f(void)
 	int ret;
 	struct udevice *dev;
 	bool flag;
-	uint64_t chipid = 0, mac_addr = 0;
+	// uint64_t chipid = 0, mac_addr = 0;
 
 #if CONFIG_IS_ENABLED(SYS_I2C_LEGACY)
 	/* init i2c */
@@ -444,16 +458,21 @@ int spl_board_init_f(void)
 
 	raise_cpu_frequency();
 #if CONFIG_IS_ENABLED(SPACEMIT_K1X_EFUSE)
-	load_chipid_from_efuse(&chipid);
+	// load_chipid_from_efuse(&chipid);
 #endif
-	get_mac_address(&mac_addr);
+	// get_mac_address(&mac_addr);
+
+	// if fail to get ddr cs number from eeprom, update it from dts node
+	if (!get_ddr_cs_number(&ddr_cs_num))
+		ddr_cs_num = 0;
 
 	// restore prevous saved ddr training info data
-	flag = restore_ddr_training_info(chipid, mac_addr);
+	// flag = restore_ddr_training_info(chipid, mac_addr);
+	flag = true;
 	if (!flag) {
 		// flush data and stack
 		flush_dcache_range(CONFIG_SPL_BSS_START_ADDR, CONFIG_SPL_STACK);
-		clean_dcache_range(round_down((size_t)__data_start, CONFIG_RISCV_CBOM_BLOCK_SIZE),
+		flush_dcache_range(round_down((size_t)__data_start, CONFIG_RISCV_CBOM_BLOCK_SIZE),
 		 	round_up((size_t)__data_end, CONFIG_RISCV_CBOM_BLOCK_SIZE));
 		icache_disable();
 		dcache_disable();
@@ -472,7 +491,8 @@ int spl_board_init_f(void)
 		dcache_enable();
 	}
 
-	update_ddr_training_info(chipid, mac_addr);
+	// update_ddr_training_info(chipid, mac_addr);
+	update_ddr_config_info(ddr_cs_num);
 	timer_init();
 
 	return 0;
@@ -623,12 +643,22 @@ char *get_product_name(void)
 {
 	char *name = NULL;
 	int eeprom_addr;
+	char tmp_name[64];
 
 	eeprom_addr = k1x_eeprom_init();
 	name = calloc(1, 64);
 	if ((eeprom_addr >= 0) && (NULL != name) && (0 == spacemit_eeprom_read(
 		eeprom_addr, name, TLV_CODE_PRODUCT_NAME))) {
 		pr_info("Get product name from eeprom %s\n", name);
+
+		/*
+			be compatible to previous format name,
+			such as: k1_deb1 -> k1-x_deb1
+		*/
+		if (strncmp(name, CONFIG_SYS_BOARD, 4)){
+			sprintf(tmp_name, "%s_%s", CONFIG_SYS_BOARD, &name[3]);
+			strcpy(name, tmp_name);
+		}
 		return name;
 	}
 
@@ -637,6 +667,20 @@ char *get_product_name(void)
 
 	pr_debug("Use default product name %s\n", DEFAULT_PRODUCT_NAME);
 	return NULL;
+}
+
+bool get_ddr_cs_number(uint32_t *cs_num)
+{
+	int eeprom_addr;
+
+	eeprom_addr = k1x_eeprom_init();
+	if ((eeprom_addr >= 0) && (NULL != cs_num) && (0 == spacemit_eeprom_read(
+		eeprom_addr, (uint8_t*)cs_num, TLV_CODE_DDR_CSNUM))) {
+		pr_info("Get ddr cs num %d from eeprom\n", *cs_num);
+		return true;
+	}
+
+	return false;
 }
 
 void spl_board_init(void)

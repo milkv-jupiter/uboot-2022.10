@@ -35,6 +35,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 static char found_partition[64] = {0};
+extern u32 ddr_cs_num;
 #ifdef CONFIG_DISPLAY_SPACEMIT_HDMI
 extern int is_hdmi_connected;
 #endif
@@ -191,16 +192,30 @@ static bool write_training_info(void *buff, ulong byte_size)
 	return false;
 }
 
-static void save_ddr_training_info(void)
+void save_ddr_training_info(void)
 {
 	struct ddr_training_info_t *info;
 	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
 
 	if ((DDR_TRAINING_INFO_MAGIC == info->magic) &&
-		(info->crc32 == crc32(0, (const uchar *)info->para, sizeof(*info) - 8))) {
+		(info->crc32 == crc32(0, (const uchar *)&info->chipid, sizeof(*info) - 8))) {
 		// save DDR training info to boot storage
 		write_training_info(info, sizeof(*info));
 	}
+}
+
+void get_ddr_config_info(void)
+{
+	struct ddr_training_info_t *info;
+	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
+
+	if ((DDR_TRAINING_INFO_MAGIC == info->magic) &&
+		(info->crc32 == crc32(0, (const uchar *)&info->chipid, sizeof(*info) - 8))) {
+		// get DDR cs number that is update in spl stage
+		ddr_cs_num = info->cs_num;
+	}
+	else
+		ddr_cs_num = DDR_CS_NUM;
 }
 
 void run_fastboot_command(void)
@@ -686,21 +701,24 @@ struct code_desc_info {
 	char	*m_name;
 };
 
-void refresh_config_info(u8 *eeprom_data) {
+void refresh_config_info(u8 *eeprom_data)
+{
 	struct tlvinfo_tlv *tlv_info = NULL;
 	char *strval;
 	int i;
+	char tmp_name[64];
 
-	struct code_desc_info {
+	const struct code_desc_info {
 		u8    m_code;
+		u8    is_data;
 		char *m_name;
 	} info[] = {
-		{ TLV_CODE_PRODUCT_NAME,   "product_name"},
-		{ TLV_CODE_SERIAL_NUMBER,  "serial#"},
-		{ TLV_CODE_MANUF_DATE,     "manufacture_date"},
-		{ TLV_CODE_MANUF_NAME,     "manufacturer"},
-		{ TLV_CODE_DEVICE_VERSION, "device_version"},
-		{ 0x40,                    "sdk_version"},
+		{ TLV_CODE_PRODUCT_NAME,   false, "product_name"},
+		{ TLV_CODE_SERIAL_NUMBER,  false, "serial#"},
+		{ TLV_CODE_MANUF_DATE,     false, "manufacture_date"},
+		{ TLV_CODE_MANUF_NAME,     false, "manufacturer"},
+		{ TLV_CODE_DEVICE_VERSION, true,  "device_version"},
+		{ TLV_CODE_SDK_VERSION,    true,  "sdk_version"},
 	};
 
 	for (i = 0; i < ARRAY_SIZE(info); i++) {
@@ -711,7 +729,7 @@ void refresh_config_info(u8 *eeprom_data) {
 		}
 
 		if (tlv_info != NULL) {
-			if (info[i].m_code == TLV_CODE_DEVICE_VERSION || info[i].m_code == 0x40) {
+			if (info[i].is_data) {
 				// Convert the numeric value to string
 				strval = malloc(64);
 				int num = 0;
@@ -724,6 +742,15 @@ void refresh_config_info(u8 *eeprom_data) {
 				strval = malloc(tlv_info->length + 1);
 				memcpy(strval, tlv_info->value, tlv_info->length);
 				strval[tlv_info->length] = '\0';
+
+				/*
+					be compatible to previous format name,
+					such as: k1_deb1 -> k1-x_deb1
+				*/
+				if (info[i].m_code == TLV_CODE_PRODUCT_NAME && strncmp(strval, CONFIG_SYS_BOARD, 4)){
+					sprintf(tmp_name, "%s_%s", CONFIG_SYS_BOARD, &strval[3]);
+					strcpy(strval, tmp_name);
+				}
 			}
 			env_set(info[i].m_name, strval);
 			free(strval);
@@ -755,7 +782,7 @@ int board_late_init(void)
 	struct tlvinfo_header *tlv_hdr = NULL;
 	struct tlvinfo_tlv *first_entry = NULL;
 
-	save_ddr_training_info();
+	// save_ddr_training_info();
 	if (IS_ENABLED(CONFIG_SYSRESET_SPACEMIT))
 		device_bind_driver(gd->dm_root, "spacemit_sysreset",
 					"spacemit_sysreset", NULL);
@@ -899,6 +926,7 @@ int misc_init_r(void)
 
 int dram_init(void)
 {
+	get_ddr_config_info();
 	u64 dram_size = (u64)ddr_get_density() * SZ_1MB;
 
 	gd->ram_base = CONFIG_SYS_SDRAM_BASE;

@@ -41,6 +41,9 @@
 // add 4KB header and 0x100 Byte signature
 #define BOOT_INFO_EMMC_LIMIT ((CONFIG_SPL_SIZE_LIMIT) + 0x1100)
 
+/* use for gzip image*/
+#define GZIP_DECOMPRESS_ADDR (CONFIG_FASTBOOT_BUF_ADDR + CONFIG_FASTBOOT_BUF_SIZE)
+
 typedef enum {
 	DEVICE_MMC,
 	DEVICE_USB,

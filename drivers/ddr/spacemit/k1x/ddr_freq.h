@@ -16,6 +16,7 @@
 #define MAX_FREQ_LV		8
 
 typedef enum {
+	DDR_1Gb = 12,
 	DDR_2Gb = 0,
 	DDR_3Gb,
 	DDR_4Gb,

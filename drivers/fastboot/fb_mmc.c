@@ -20,6 +20,7 @@
 #include <android_image.h>
 #include <fb_spacemit.h>
 #include <u-boot/crc.h>
+#include <gzip.h>
 
 #define FASTBOOT_MAX_BLK_WRITE 16384
 
@@ -522,6 +523,11 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 	u32 __maybe_unused fsbl_offset = 0;
 	/*save crc value to compare after flash image*/
 	u64 compare_val = 0;
+	/*use for gzip image*/
+	static u32 __maybe_unused part_offset_t = 0;
+	static char __maybe_unused part_name_t[20] = "";
+	unsigned long __maybe_unused src_len = ~0UL;
+	bool gzip_image = false;
 
 	if (fdev == NULL){
 		fdev = malloc(sizeof(struct flash_dev));
@@ -664,13 +670,42 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 	    fastboot_mmc_get_part_info(cmd, &dev_desc, &info, response) < 0)
 		return;
 
+	if (gzip_parse_header((uchar *)download_buffer, src_len) >= 0) {
+		/*is gzip data and equal part name*/
+		gzip_image = true;
+		if (strcmp(cmd, part_name_t)){
+			pr_info("flash part name %s is not equal to %s, \n", cmd, part_name_t);
+			strcpy(part_name_t, cmd);
+			part_offset_t = 0;
+		}
+
+		void *decompress_addr = (void *)GZIP_DECOMPRESS_ADDR;
+		pr_info("decompress_addr:%p\n", decompress_addr);
+		if (run_commandf("unzip %x %x", download_buffer, decompress_addr)){
+			printf("unzip gzip data fail, \n");
+			fastboot_fail("unzip gzip data fail", response);
+			return;
+		}
+
+		u32 decompress_size = env_get_hex("filesize", 0);
+		pr_info("get decompress_size:%x, \n", decompress_size);
+		download_buffer = decompress_addr;
+		download_bytes = decompress_size;
+		info.start += part_offset_t / info.blksz;
+
+		pr_info("write gzip raw data to part:%s, %p, %x, blkaddr:%lx\n", cmd, download_buffer, download_bytes, info.start);
+	} else {
+		strcpy(part_name_t, cmd);
+		part_offset_t = 0;
+	}
+
 	if (download_bytes > info.size * info.blksz){
 		printf("download_bytes is greater than part size\n");
 		fastboot_fail("download_bytes is greater than part size", response);
 		return;
 	}
 
-	if (is_sparse_image(download_buffer)) {
+	if (!gzip_image && is_sparse_image(download_buffer)) {
 		struct fb_mmc_sparse sparse_priv;
 		struct sparse_storage sparse = { .erase = NULL };
 		int err;
@@ -704,6 +739,7 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 		if (compare_blk_image_val(dev_desc, compare_val, info.start, info.blksz, download_bytes))
 			fastboot_fail("compare crc fail", response);
 #endif
+		part_offset_t += download_bytes;
 	}
 }
 

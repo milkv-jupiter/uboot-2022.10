@@ -101,7 +101,7 @@ enum DCLK_BYPASS_sel {
 #define KHZ			1000
 #define FREQ_MAX		~(0U)
 
-
+u32 ddr_cs_num = DDR_CS_NUM;
 
 static u32 mode_register_read(u32 MR, u32 CH, u32 CS)
 {
@@ -155,6 +155,13 @@ static u32 format_size(u32 density, u32 io_width)
 	return size;
 }
 
+u32 ddr_get_mr8(void)
+{
+	u32 mr8;
+	mr8 = mode_register_read(8, 0, 0);
+	return (mr8&0xff);
+}
+
 u32 ddr_get_density(void)
 {
 	u32 ddr_size = 0;
@@ -165,18 +172,23 @@ u32 ddr_get_density(void)
 
 	mr8_cs00 = mode_register_read(8, 0, 0);
 	mr8_cs01 = mode_register_read(8, 1, 0);
-	mr8_cs10 = mode_register_read(8, 0, 1);
-	mr8_cs11 = mode_register_read(8, 1, 1);
 
 	io_width_cs00 = mr8_cs00 ? mr8_cs00 >> 6 : 0;
 	io_width_cs01 = mr8_cs01 ? mr8_cs01 >> 6 : 0;
-	io_width_cs10 = mr8_cs10 ? mr8_cs10 >> 6 : 0;
-	io_width_cs11 = mr8_cs11 ? mr8_cs11 >> 6 : 0;
 
 	cs0_size = mr8_cs00 ? format_size(((mr8_cs00 >> 2) & 0xf), io_width_cs00) : 0;
 	cs0_size += mr8_cs01 ? format_size(((mr8_cs01 >> 2) & 0xf), io_width_cs01) : 0;
-	cs1_size = mr8_cs10 ? format_size(((mr8_cs10 >> 2) & 0xf), io_width_cs10) : 0;
-	cs1_size += mr8_cs11 ? format_size(((mr8_cs11 >> 2) & 0xf), io_width_cs11) : 0;
+
+	if (ddr_cs_num > 1) {
+		mr8_cs10 = mode_register_read(8, 0, 1);
+		mr8_cs11 = mode_register_read(8, 1, 1);
+
+		io_width_cs10 = mr8_cs10 ? mr8_cs10 >> 6 : 0;
+		io_width_cs11 = mr8_cs11 ? mr8_cs11 >> 6 : 0;
+
+		cs1_size = mr8_cs10 ? format_size(((mr8_cs10 >> 2) & 0xf), io_width_cs10) : 0;
+		cs1_size += mr8_cs11 ? format_size(((mr8_cs11 >> 2) & 0xf), io_width_cs11) : 0;
+	}
 
 	ddr_size = cs0_size + cs1_size;
 	pr_info("DDR size = %d MB\n", ddr_size);

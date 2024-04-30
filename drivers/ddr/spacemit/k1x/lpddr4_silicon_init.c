@@ -21,6 +21,7 @@
 #include "ddr_init_asic.h"
 #include <mapmem.h>
 #include <u-boot/crc.h>
+#include "ddr_freq.h"
 
 #define BOOT_PP		0
 #define PMUA_REG_BASE	0xd4282800
@@ -39,9 +40,37 @@
 #define LogMsg(level, format, args...)
 #endif
 
-extern u32 ddr_get_density(void);
+extern u32 ddr_cs_num;
+extern u32 ddr_get_mr8(void);
 extern uint32_t get_manufacture_id(void);
 extern uint32_t get_ddr_rev_id(void);
+
+struct addrmap_info {
+	u32 io_width_per_channel;
+	u32 density_per_channel;
+	u32 bank_num;
+	u32 row_num;
+	u32 col_num;
+};
+
+static const struct addrmap_info ddr_addrmap[] = {
+	{IO_X16, DDR_1Gb , BANK_8, ROW_13, COL_10},
+	{IO_X16, DDR_2Gb , BANK_8, ROW_14, COL_10},
+	{IO_X16, DDR_3Gb , BANK_8, ROW_15, COL_10},
+	{IO_X16, DDR_4Gb , BANK_8, ROW_15, COL_10},
+	{IO_X16, DDR_6Gb , BANK_8, ROW_16, COL_10},
+	{IO_X16, DDR_8Gb , BANK_8, ROW_16, COL_10},
+	{IO_X16, DDR_12Gb, BANK_8, ROW_17, COL_10},
+	{IO_X16, DDR_16Gb, BANK_8, ROW_17, COL_10},
+	{IO_X8 , DDR_1Gb , BANK_8, ROW_14, COL_10},
+	{IO_X8 , DDR_2Gb , BANK_8, ROW_15, COL_10},
+	{IO_X8 , DDR_3Gb , BANK_8, ROW_16, COL_10},
+	{IO_X8 , DDR_4Gb , BANK_8, ROW_16, COL_10},
+	{IO_X8 , DDR_6Gb , BANK_8, ROW_17, COL_10},
+	{IO_X8 , DDR_8Gb , BANK_8, ROW_17, COL_10},
+	{IO_X8 , DDR_12Gb, BANK_8, ROW_18, COL_10},
+	{IO_X8 , DDR_16Gb, BANK_8, ROW_18, COL_10},
+};
 
 void enable_PLL(void)
 {
@@ -892,16 +921,87 @@ void adjust_timing(u32 DDRC_BASE)
 	REG32(DDRC_BASE + MC_CH0_BASE + 0x01fc) = 0x000C005E;
 }
 
-void adjust_mapping(u32 DDRC_BASE)
+void adjust_mapping(u32 DDRC_BASE, u32 cs_num, u32 size_mb, u32 mr8_value)
 {
-	REG32(DDRC_BASE + MC_CH0_BASE) = 0xf0001;
-	REG32(DDRC_BASE + MC_CH0_BASE + 0x4) = 0x0;
-	REG32(DDRC_BASE + MC_CH0_BASE + 0x8) = 0x800f0001;
-	REG32(DDRC_BASE + MC_CH0_BASE + 0xc) = 0x0;
-	REG32(DDRC_BASE + MC_CH0_BASE + 0x20) = 0x05030632;
-	REG32(DDRC_BASE + MC_CH0_BASE + 0x24) = 0x05030632;
-}
+	u32 area_length_mb, area_length_cfg;
+	u32 cs1_start_addr_l, cs1_start_addr_h;
+	u32 io_width, density;
+	u32 i, read_data;
+	const struct addrmap_info *addrmap = &ddr_addrmap[13]; 
 
+	area_length_mb = size_mb / cs_num;
+	// area_length_mb = size_mb >> (cs_num -1);
+	switch (area_length_mb) {
+	case 1024: // 1GB
+		area_length_cfg = 0xE;
+		break;
+	case 2048: // 2GB
+		area_length_cfg = 0xF;
+		break;
+	case 4096: // 4GB
+		area_length_cfg = 0x10;
+		break;
+	case 8192: // 8GB
+		area_length_cfg = 0x11;
+		break;
+	case 16384: // 16GB
+		area_length_cfg = 0x12;
+		break;
+	default:
+		pr_err("do not support such area length =0x%x MB\n", area_length_mb);
+		area_length_cfg = 0x10;
+		break;
+	}
+
+	cs1_start_addr_l = ((area_length_mb >> 3) & 0x1FF);
+	cs1_start_addr_h = ((area_length_mb >> 12) & 0xFFFFFFFF);
+
+	io_width = (mr8_value >> 6);
+	density = (mr8_value >> 2) & 0xf;
+
+	for (i = 0; i < ARRAY_SIZE(ddr_addrmap); i++) {
+		if ((io_width == ddr_addrmap[i].io_width_per_channel) && (density == ddr_addrmap[i].density_per_channel) ) {
+			addrmap = &ddr_addrmap[i];
+			break;
+		}
+	}
+
+	read_data = REG32(DDRC_BASE + MC_CH0_BASE);
+	read_data &= 0x0060FFFF;
+	read_data |= (area_length_cfg << 16);
+	REG32(DDRC_BASE + MC_CH0_BASE) = read_data;
+	REG32(DDRC_BASE + MC_CH0_BASE + 0x4) = 0x0;
+
+	read_data = REG32(DDRC_BASE + MC_CH0_BASE + 0x8);
+	read_data &= 0x0060FFFF;
+	read_data |= (cs1_start_addr_l << 23) |(area_length_cfg << 16);
+	REG32(DDRC_BASE + MC_CH0_BASE + 0x8) = read_data;
+	REG32(DDRC_BASE + MC_CH0_BASE + 0xc) = cs1_start_addr_h;
+
+	read_data = REG32(DDRC_BASE + MC_CH0_BASE + 0x20);
+	read_data &= 0xFFFFF00C;
+	read_data |= (addrmap->row_num << 8) | (addrmap->col_num << 4) | (addrmap->bank_num);
+	REG32(DDRC_BASE + MC_CH0_BASE + 0x20) = read_data;
+
+	read_data = REG32(DDRC_BASE + MC_CH0_BASE + 0x24);
+	read_data &= 0xFFFFF00C;
+	read_data |= (addrmap->row_num << 8) | (addrmap->col_num << 4) | (addrmap->bank_num);
+	REG32(DDRC_BASE + MC_CH0_BASE + 0x24) = read_data;
+
+//     REG32(DDRC_BASE + MC_CH0_BASE) = 0xf0001;
+//     REG32(DDRC_BASE + MC_CH0_BASE + 0x4) = 0x0;
+//     REG32(DDRC_BASE + MC_CH0_BASE + 0x8) = 0x800f0001;
+//     REG32(DDRC_BASE + MC_CH0_BASE + 0xc) = 0x0;
+//     REG32(DDRC_BASE + MC_CH0_BASE + 0x20) = 0x05030632;//8 bank, 17 row, 10 column
+//     REG32(DDRC_BASE + MC_CH0_BASE + 0x24) = 0x05030632;//8 bank, 17 row, 10 column
+
+	LogMsg("DEBUG-ADDR[0x%x]:0x%x\n", (DDRC_BASE + MC_CH0_BASE), REG32(DDRC_BASE + MC_CH0_BASE));
+	LogMsg("DEBUG-ADDR[0x%x]:0x%x\n", (DDRC_BASE + MC_CH0_BASE + 0x4), REG32(DDRC_BASE + MC_CH0_BASE + 0x4));
+	LogMsg("DEBUG-ADDR[0x%x]:0x%x\n", (DDRC_BASE + MC_CH0_BASE + 0x8), REG32(DDRC_BASE + MC_CH0_BASE + 0x8));
+	LogMsg("DEBUG-ADDR[0x%x]:0x%x\n", (DDRC_BASE + MC_CH0_BASE + 0xc), REG32(DDRC_BASE + MC_CH0_BASE + 0xc));
+	LogMsg("DEBUG-ADDR[0x%x]:0x%x\n", (DDRC_BASE + MC_CH0_BASE + 0x20), REG32(DDRC_BASE + MC_CH0_BASE + 0x20));
+	LogMsg("DEBUG-ADDR[0x%x]:0x%x\n", (DDRC_BASE + MC_CH0_BASE + 0x24), REG32(DDRC_BASE + MC_CH0_BASE + 0x24));
+}
 __maybe_unused static int printf_no_output(const char *fmt, ...)
 {
         return 0;
@@ -912,6 +1012,7 @@ static void top_training_fp_all(u32 ddr_base, u32 cs_num, u32 boot_pp, void *inp
 	u64 to_traning_param[10];
 	int (*func)(const char*, ...) = printf;
 	void (*training)(void* param);
+	unsigned long flush_lenth;
 
 	#if !(LOGLEVEL > 0)
 	func = printf_no_output;
@@ -922,37 +1023,43 @@ static void top_training_fp_all(u32 ddr_base, u32 cs_num, u32 boot_pp, void *inp
 	to_traning_param[2] = boot_pp;
 	to_traning_param[3] = (u64)func;
 	to_traning_param[4] = (u64)input;
-	training = (void (*)(void * param))lpddr4_training_img;
+	memcpy((void*)DDR_TRAINING_DATA_BASE, lpddr4_training_img, sizeof(lpddr4_training_img));
+	flush_lenth = round_up(sizeof(lpddr4_training_img), CONFIG_RISCV_CBOM_BLOCK_SIZE);
+	flush_dcache_range(DDR_TRAINING_DATA_BASE, DDR_TRAINING_DATA_BASE + flush_lenth);
+
+	training = (void (*)(void * param))DDR_TRAINING_DATA_BASE;
 	training(to_traning_param);
 }
 
 void lpddr4_silicon_init(u32 ddr_base, u32 data_rate)
 {
-	unsigned fp=0;
-	unsigned cs_num=2;
+	u32 fp=0;
+	u32 size_mb, mr8_value, cs_num;;
 	struct ddr_training_info_t *info;
 
+	cs_num = ddr_cs_num;
 	info = (struct ddr_training_info_t*)map_sysmem(DDR_TRAINING_INFO_BUFF, 0);
-
 	top_Common_config();
-	top_DDR_MC_Phy_Device_Init(ddr_base,cs_num,0);
-	if (ddr_get_density() == 4096) {
-		adjust_mapping(ddr_base);
-	}
-	pr_info("ddr density: %u \n", ddr_get_density());
+
+	top_DDR_MC_Phy_Device_Init(ddr_base, cs_num, 0);
+
+	size_mb = ddr_get_density();
+	mr8_value = ddr_get_mr8();
+	adjust_mapping(ddr_base, cs_num, size_mb, mr8_value);
+	LogMsg(0,"ddr density: %u MB \n", size_mb);
 
 	ddr_dfc_table_init(0xF0000000);
 	init_table_mc_a0(0xF0000000);
 
-	top_training_fp_all(ddr_base,cs_num,0, info->para);
+	top_training_fp_all(ddr_base, cs_num, 0, info->para);
 
 	fp=1;
 	ddr_dfc(fp);
-	top_training_fp_all(ddr_base,cs_num,fp, info->para);
+	top_training_fp_all(ddr_base, cs_num, fp, info->para);
 
 	fp=2;
 	ddr_dfc(fp);
-	top_training_fp_all(ddr_base,cs_num,fp, info->para);
+	top_training_fp_all(ddr_base, cs_num, fp, info->para);
 
 	/* change dram frequency */
 	switch(data_rate) {

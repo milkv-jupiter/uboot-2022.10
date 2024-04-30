@@ -26,6 +26,8 @@
 #define DDR_CHECK_CNT			(0x1000)
 #define TOP_DDR_NUM				1
 
+extern u32 ddr_cs_num;
+
 static int test_pattern(fdt_addr_t base, fdt_size_t size)
 {
 	fdt_addr_t addr;
@@ -139,6 +141,12 @@ static int spacemit_ddr_probe(struct udevice *dev)
 		ddr_datarate = 1200;
 	} else {
 		pr_info("ddr data rate is %u configured in dts\n", ddr_datarate);
+	}
+
+	/* if DDR cs number is NOT configued in eeprom or in dts, use default value */
+	if((0 == ddr_cs_num) && dev_read_u32u(dev, "cs-num", &ddr_cs_num)) {
+		pr_info("ddr cs number not configed in dts!\n");
+		ddr_cs_num = DDR_CS_NUM;
 	}
 
 	/* init dram */

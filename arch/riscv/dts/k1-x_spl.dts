@@ -79,6 +79,7 @@
 	ddr@c0000000 {
 		/* dram data rate, should be 1200, 1600, or 2400 */
 		datarate = <2400>;
+		cs-num = <2>;
 		u-boot,dm-spl;
 	};
 
