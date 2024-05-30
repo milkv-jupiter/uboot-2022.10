@@ -90,6 +90,14 @@ config WDT_APPLE
 	  The watchdog will perform a full SoC reset resulting in a
 	  reboot of the entire system.
 
+config WDT_SPACEMIT
+	bool "SPACEMIT watchdog timer support"
+	depends on WDT
+	help
+	  Enable support for the watchdog timer on SPACEMIT SoCs.
+	  The watchdog will perform a full SoC reset resulting in a
+	  reboot of the entire system.
+
 config WDT_ARMADA_37XX
 	bool "Marvell Armada 37xx watchdog timer support"
 	depends on WDT && ARMADA_3700

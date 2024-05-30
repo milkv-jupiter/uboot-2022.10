@@ -68,6 +68,9 @@
 #define BOOT_CIU_DEBUG_REG1	(BOOT_CIU_REG + 0x0394)
 #define BOOT_CIU_DEBUG_REG2	(BOOT_CIU_REG + 0x0398)
 
+// non-reset register in P1
+#define P1_NON_RESET_REG	(0xAB)
+
 #define K1_EFUSE_USER_BANK0		8
 #define K1_DEFALT_PMIC_TYPE		0
 #define K1_DEFALT_EEPROM_I2C_INDEX	2
@@ -91,6 +94,7 @@ enum board_boot_mode {
 	BOOT_MODE_NOR,
 	BOOT_MODE_SD,
 	BOOT_MODE_SHELL = 0x55f,
+	BOOT_MODE_BOOTSTRAP,
 };
 
 struct ddr_training_info_t {
@@ -114,7 +118,12 @@ struct boot_storage_op
 };
 #endif
 
-#define MMC_DEV_EMMC	(2)
+#if defined(CONFIG_SPL_BUILD)
+#define MMC_DEV_EMMC	(1)
+#else
+#define MMC_DEV_EMMC    (2)
+#endif
+
 #define MMC_DEV_SD	(0)
 
 #define BOOTFS_NAME	("bootfs")

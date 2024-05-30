@@ -35,32 +35,38 @@
 #define EMMC_MAX_BLK_WRITE 16384
 
 #if CONFIG_IS_ENABLED(SPACEMIT_FLASH)
-static int _write_gpt_partition(struct flash_dev *fdev, char *response)
+int _write_gpt_partition(struct flash_dev *fdev)
 {
-	__maybe_unused char write_part_command[300] = {"\0"};
 	char *gpt_table_str = NULL;
+	int ret = 0;
 
 	u32 boot_mode = get_boot_pin_select();
 
 	if (fdev->gptinfo.gpt_table != NULL && strlen(fdev->gptinfo.gpt_table) > 0){
 		gpt_table_str = malloc(strlen(fdev->gptinfo.gpt_table) + 32);
 		if (gpt_table_str == NULL){
+			pr_err("malloc size fail\n");
 			return -1;
 		}
 		sprintf(gpt_table_str, "env set -f partitions '%s'", fdev->gptinfo.gpt_table);
 		run_command(gpt_table_str, 0);
-		free(gpt_table_str);
+	} else{
+		pr_info("parse gpt table is NULL, do nothing");
+		return 0;
 	}
+
+	memset(gpt_table_str, 0, strlen(fdev->gptinfo.gpt_table) + 32);
 
 	switch(boot_mode){
 #if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC) || CONFIG_IS_ENABLED(FASTBOOT_MULTI_FLASH_OPTION_MMC)
 	case BOOT_MODE_EMMC:
 	case BOOT_MODE_SD:
-		sprintf(write_part_command, "gpt write mmc %x '%s'",
+		sprintf(gpt_table_str, "gpt write mmc %x '%s'",
 			CONFIG_FASTBOOT_FLASH_MMC_DEV, fdev->gptinfo.gpt_table);
-		if (run_command(write_part_command, 0)){
-			fastboot_fail("write gpt fail", response);
-			return -1;
+		if (run_command(gpt_table_str, 0)){
+			pr_err("write gpt fail");
+			ret = -1;
+			goto err;
 		}
 		break;
 #endif
@@ -73,26 +79,31 @@ static int _write_gpt_partition(struct flash_dev *fdev, char *response)
 		/*nvme need scan at first*/
 		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)
 						&& nvme_scan_namespace()){
-			fastboot_fail("can not can nvme devices!", response);
-			return -1;
+			pr_err("can not can nvme devices!");
+			ret = -1;
+			goto err;
 		}
 
-		sprintf(write_part_command, "gpt write %s %x '%s'",
+		sprintf(gpt_table_str, "gpt write %s %x '%s'",
 			CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX,
 			fdev->gptinfo.gpt_table);
-		if (run_command(write_part_command, 0)){
-			fastboot_fail("write gpt fail", response);
-			return -1;
+		if (run_command(gpt_table_str, 0)){
+			pr_err("write gpt fail");
+			ret = -1;
+			goto err;
 		}
 		break;
 #endif
 	default:
-		break;
+		pr_err("no dev to write gpt table, check your env\n");
+		ret = -1;
+		goto err;
 	}
+	pr_info("parse gpt/mtd table okay");
+err:
+	free(gpt_table_str);
 
-
-	fastboot_okay("parse gpt/mtd table okay", response);
-	return 0;
+	return ret;
 }
 
 int _clear_env_part(void *download_buffer, u32 download_bytes,
@@ -152,12 +163,18 @@ int _clear_env_part(void *download_buffer, u32 download_bytes,
 	return 0;
 }
 
-static int _write_mtd_partition(char mtd_table[128], char *response)
+int _write_mtd_partition(struct flash_dev *fdev)
 {
 #ifdef CONFIG_MTD
 	struct mtd_info *mtd;
 	char mtd_ids[36] = {"\0"};
-	char mtd_parts[128] = {"\0"};
+	char *mtd_parts = NULL;
+
+	mtd_parts = malloc(strlen(fdev->mtd_table) + 32);
+	if (mtd_parts == NULL){
+		pr_err("malloc size fail\n");
+		return -1;
+	}
 
 	mtd_probe_devices();
 
@@ -171,18 +188,20 @@ static int _write_mtd_partition(char mtd_table[128], char *response)
 	}
 
 	if (mtd == NULL){
-		fastboot_fail("can not get mtd device", response);
+		pr_err("can not get mtd device");
+		free(mtd_parts);
 		return -1;
 	}
 
 	/*to mtd device, it should write mtd table to env.*/
 	sprintf(mtd_ids, "%s=spi-dev", mtd->name);
-	sprintf(mtd_parts, "spi-dev:%s", mtd_table);
+	sprintf(mtd_parts, "spi-dev:%s", fdev->mtd_table);
 
 	env_set("mtdids", mtd_ids);
 	env_set("mtdparts", mtd_parts);
+
 #endif
-	fastboot_okay("parse gpt/mtd table okay", response);
+	pr_info("parse gpt/mtd table okay");
 	return 0;
 }
 
@@ -256,8 +275,10 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr)
 
 	/*init and would remalloc while size is increasing*/
 	combine_str = malloc(combine_len);
-	memset(combine_str, '\0', combine_len);
+	if (combine_str == NULL)
+		return -1;
 
+	memset(combine_str, '\0', combine_len);
 	json_root = cJSON_Parse(load_flash_addr);
 	if (!json_root){
 		pr_err("can not parse json, check your flash_config.cfg is json format or not\n");
@@ -461,11 +482,17 @@ void fastboot_oem_flash_gpt(const char *cmd, void *download_buffer, u32 download
 	}
 
 	if (strlen(fdev->gptinfo.gpt_table) > 0 && fdev->gptinfo.fastboot_flash_gpt){
-		_write_gpt_partition(fdev, response);
+		if (_write_gpt_partition(fdev)){
+			fastboot_fail("write gpt tabel fail", response);
+			return;
+		}
 	}
 
 	if (strlen(fdev->mtd_table) > 0){
-		_write_mtd_partition(fdev->mtd_table, response);
+		if (_write_mtd_partition(fdev)){
+			fastboot_fail("write mtd tabel fail", response);
+			return;
+		}
 	}
 
 	/*set partition to env*/
@@ -833,6 +860,14 @@ void fastboot_oem_flash_bootinfo(const char *cmd, void *download_buffer,
 #endif
 
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_CONFIG_ACCESS)
+#if defined(CONFIG_SPL_BUILD)
+extern int get_tlvinfo_from_eeprom(int tcode, char *buf);
+extern int set_val_to_tlvinfo(int tcode, char *valvoid);
+extern int write_tlvinfo_to_eeprom(void);
+#else
+static bool tlvinfo_init = false;
+#endif
+
 struct oem_config_info
 {
 	const char *name;
@@ -844,6 +879,7 @@ const struct oem_config_info config_info[] = {
 	{ "product_name", TLV_CODE_PRODUCT_NAME, 16, NULL },
 	{ "serial#", TLV_CODE_SERIAL_NUMBER, 12, NULL },
 	{ "ethaddr", TLV_CODE_MAC_BASE, 17, NULL },
+	{ "ethsize", TLV_CODE_MAC_SIZE, 6, NULL },/*size must equal or less than 65535*/
 	{ "manufacture_date", TLV_CODE_MANUF_DATE, 19, NULL },
 	{ "device_version", TLV_CODE_DEVICE_VERSION, 3, NULL },
 	{ "manufacturer", TLV_CODE_MANUF_NAME, 32, NULL },
@@ -856,39 +892,18 @@ const struct oem_config_info config_info[] = {
 
 static int write_config_info_to_eeprom(uint32_t id, char *value)
 {
-	char *cmd_str;
-
-	cmd_str = malloc(256);
-	if (NULL == cmd_str) {
-		pr_err("malloc buffer for cmd string fail\n");
+#if defined(CONFIG_SPL_BUILD)
+	if (set_val_to_tlvinfo(id, value) == 0)
+#else
+	if (!tlvinfo_init){
+		run_command("tlv_eeprom", 0);
+		tlvinfo_init = true;
+	}
+	if (run_commandf("tlv_eeprom set 0x%x %s", id, value) == 0)
+#endif
+		return 0;
+	else
 		return -1;
-	}
-
-	pr_info("write data to EEPROM, ID:%d, string:%s\n", id, value);
-	/* read eeprom */
-	sprintf(cmd_str, "tlv_eeprom read");
-	if (run_command(cmd_str, 0)) {
-		free(cmd_str);
-		pr_err("tlv_eeprom read fail\n");
-		return 1;
-	}
-
-	// update eeprom data, need add '' for value string that may have space inside
-	sprintf(cmd_str, "tlv_eeprom set %d '%s'", id, value);
-	if (run_command(cmd_str, 0)) {
-		free(cmd_str);
-		pr_err("tlv_eeprom set %s to %d fail\n", value, id);
-		return 2;
-	}
-
-	if (run_command("tlv_eeprom write", 0)) {
-		free(cmd_str);
-		pr_err("tlv_eeprom write fail\n");
-		return 3;
-	}
-
-	free(cmd_str);
-	return 0;
 }
 
 #if CONFIG_IS_ENABLED(SPACEMIT_K1X_EFUSE)
@@ -936,58 +951,33 @@ static struct oem_config_info* get_config_info(char *key)
 
 static void read_oem_configuration(char *config, char *response)
 {
-	char *key;
 	struct oem_config_info* info;
-	char *ack, *value, *temp;
-	int i = 0, j;
+	char *ack;
 
-	ack = malloc(256);
+	ack = calloc(0, 256);
 	if (NULL == ack) {
 		pr_err("malloc buffer for ack fail\n");
 		return;
 	}
 
-	temp = malloc(256);
-	if (NULL == temp) {
-		free(ack);
-		pr_err("malloc buffer for temp fail\n");
-		return;
-	}
-	memset(ack, 0, 256);
-
-	key = strsep(&config, ",");
-	while (NULL != key) {
-		pr_debug("try to find config info for %s\n", key);
-		info = get_config_info(key);
-		if (NULL != info) {
-			value = env_get(key);
-			if (NULL != info->convert)
-				value = info->convert(value);
-			// make sure value string is NOT exceed temp buffer
-			if ((NULL != value) && (strlen(value) < 128)) {
-				memset(temp, 0, 256);
-				sprintf(temp, "%s", value);
-				j = strlen(temp);
-				if ((i + j) < 256) {
-					// add comma between two info dictionary
-					if (0 != i)
-						ack[i++] = ',';
-					memcpy(ack + i, temp, j);
-					i += j;
-				}
-			}
+	info = get_config_info(config);
+	if (NULL != info){
+		pr_info("%s, %x, \n", info->name, info->id);
+#if defined(CONFIG_SPL_BUILD)
+		if (get_tlvinfo_from_eeprom(info->id, ack) == 0){
+#else
+		char *tmp_str = env_get(info->name);
+		if (tmp_str != NULL){
+			strcpy(ack, tmp_str);
+#endif
+			fastboot_okay(ack, response);
+		}else{
+			fastboot_fail("key NOT exist", response);
 		}
-		key = strsep(&config, ",");
+	}else{
+		fastboot_fail("key NOT exist", response);
 	}
-
-	if (0 != i) {
-		fastboot_okay(ack, response);
-	} else {
-		fastboot_fail("NOT exist", response);
-	}
-
 	free(ack);
-	free(temp);
 }
 
 static void write_oem_configuration(char *config, char *response)
@@ -1020,15 +1010,23 @@ static void write_oem_configuration(char *config, char *response)
 		}
 	}
 
-	if (0 == ret)
+	if (ret){
+		fastboot_fail("write key fail", response);
+		return;
+	}
+
+#if defined(CONFIG_SPL_BUILD)
+	if (0 == write_tlvinfo_to_eeprom())
+#else
+	if (!tlvinfo_init){
+		run_command("tlv_eeprom", 0);
+		tlvinfo_init = true;
+	}
+	if (run_command("tlv_eeprom write", 0) == 0)
+#endif
 		fastboot_okay(NULL, response);
 	else
-		fastboot_fail("NOT exist", response);
-}
-
-static void flush_oem_configuration(char *config, char *response)
-{
-	fastboot_okay(NULL, response);
+		fastboot_fail("write fail", response);
 }
 
 /**
@@ -1047,12 +1045,10 @@ void fastboot_config_access(char *operation, char *config, char *response)
 		read_oem_configuration(config, response);
 	else if (0 == strcmp(operation, "write"))
 		write_oem_configuration(config, response);
-	else if (0 == strcmp(operation, "flush"))
-		flush_oem_configuration(config, response);
 	else
 		fastboot_fail("NOT support", response);
 }
-#endif
+#endif /*CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_CONFIG_ACCESS)*/
 
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ENV_ACCESS)
 #if defined(CONFIG_SPL_BUILD)
@@ -1146,3 +1142,169 @@ void fastboot_env_access(char *operation, char *env, char *response)
 		fastboot_fail("NOT support", response);
 }
 #endif
+
+#define GZIP_HEADER_HEAD_CRC		2
+#define GZIP_HEADER_EXTRA_FIELD		4
+#define GZIP_HEADER_ORIG_NAME		8
+#define GZIP_HEADER_COMMENT		0x10
+#define GZIP_HEADER_RESERVED		0xe0
+#define GZIP_HEADER_DEFLATED		8
+int check_gzip_format(const unsigned char *src, unsigned long len)
+{
+	int i, flags;
+
+	/* skip header */
+	i = 10;
+	flags = src[3];
+	if (src[2] != GZIP_HEADER_DEFLATED || (flags & GZIP_HEADER_RESERVED) != 0) {
+		pr_info("is not gzipped data\n");
+		return (-1);
+	}
+	if ((flags & GZIP_HEADER_EXTRA_FIELD) != 0)
+		i = 12 + src[10] + (src[11] << 8);
+	if ((flags & GZIP_HEADER_ORIG_NAME) != 0)
+		while (src[i++] != 0)
+			;
+	if ((flags & GZIP_HEADER_COMMENT) != 0)
+		while (src[i++] != 0)
+			;
+	if ((flags & GZIP_HEADER_HEAD_CRC) != 0)
+		i += 2;
+	if (i >= len) {
+		pr_info("gunzip out of data in header\n");
+		return (-1);
+	}
+	return i;
+}
+
+#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ERASE)
+/*boot0,boot1 would erase 128KB size*/
+#define ERASE_BOOT_SIZE (0x100)
+
+int clear_emmc(lbaint_t blkcnt)
+{
+	struct blk_desc *dev_desc;
+	struct mmc *mmc;
+	u32 n;
+
+	mmc_init_device(MMC_DEV_EMMC);
+	mmc = find_mmc_device(MMC_DEV_EMMC);
+	if (!mmc){
+		pr_err("can not get mmc dev\n");
+		return -1;
+	}
+	if (mmc_init(mmc)){
+		pr_err("can not init mmc\n");
+		return -1;
+	}
+
+	dev_desc = mmc_get_blk_desc(mmc);
+	if (!dev_desc){
+		pr_err("can not get blk dev of emmc\n");
+		return -1;
+	}
+
+	n = blk_derase(dev_desc, 0, blkcnt);
+	if (n != blkcnt){
+		pr_err("erase size %lx fail\n", blkcnt);
+		return -1;
+	}
+
+	/* erase boot0/boot1 partition*/
+	if (mmc_set_part_conf(mmc, 0, 0, 1) ||
+			ERASE_BOOT_SIZE != blk_derase(dev_desc, 0, ERASE_BOOT_SIZE)){
+		pr_err("erase boot0 fail\n");
+		return -1;
+	}
+	if (mmc_set_part_conf(mmc, 0, 0, 2) ||
+			ERASE_BOOT_SIZE != blk_derase(dev_desc, 0, ERASE_BOOT_SIZE)){
+		pr_err("erase boot1 fail\n");
+		return -1;
+	}
+	return 0;
+}
+
+int clear_mtd(char *mtd_dev, u32 erase_size)
+{
+	static struct mtd_info *mtd = NULL;
+	int ret;
+
+	if (mtd == NULL){
+		pr_info("mtd is not init\n");
+		mtd_probe_devices();
+	}
+	mtd = get_mtd_device_nm(mtd_dev);
+	if (IS_ERR_OR_NULL(mtd)){
+		pr_info("MTD device %s not found\n", mtd_dev);
+		return -1;
+	}
+
+	erase_size = round_up(erase_size, mtd->erasesize);
+	ret = _fb_mtd_erase(mtd, erase_size);
+	if (ret)
+		return -1;
+	return 0;
+}
+
+#define DEFAULT_EEPROM_ERASE_SIZE (256)
+#define DEFAULT_EEPROM_DEV (0)
+#define DEFAULT_EMMC_ERASE_SIZE (0x10000000)
+#define DEFAULT_MTD_ERASE_SIZE (0x100000)
+void clear_storage_data(char *cmd_parameter, char *response)
+{
+	char *cmd_str, *operation;
+	u32 erase_size;
+
+	cmd_str = cmd_parameter;
+	operation = strsep(&cmd_str, " ");
+	if (cmd_str != NULL){
+		pr_info("get erase size:%s\n", cmd_str);
+		erase_size = hextoul(cmd_str, NULL);
+	}else {
+		pr_info("has not define erase size, use default size\n");
+		erase_size = 0;
+	}
+
+	if (!strncmp("eeprom", operation, 6)){
+		erase_size = (erase_size == 0) ? DEFAULT_EEPROM_ERASE_SIZE : erase_size;
+		pr_info("erase eeprom, erase size:%x\n", erase_size);
+#if defined(CONFIG_SPL_BUILD)
+		if (clear_eeprom(DEFAULT_EEPROM_DEV, erase_size))
+#else
+		if (run_command("tlv_eeprom;tlv_eeprom erase;tlv_eeprom write", 0))
+#endif
+			fastboot_fail("erase eeprom fail", response);
+		else
+			fastboot_okay(NULL, response);
+		return;
+	} else if (!strncmp("emmc", operation, 4)){
+		erase_size = (erase_size == 0) ? DEFAULT_EMMC_ERASE_SIZE : erase_size;
+		pr_info("erase emmc, erase size:%x\n", erase_size);
+
+		if (clear_emmc(erase_size/512))
+			fastboot_fail("erase emmc fail", response);
+		else
+			fastboot_okay(NULL, response);
+		return;
+	}
+
+	erase_size = (erase_size == 0) ? DEFAULT_MTD_ERASE_SIZE : erase_size;
+	if (!strncmp("nor", operation, 3)){
+		if (clear_mtd("nor0", erase_size))
+			fastboot_fail("erase nor fail", response);
+		else
+			fastboot_okay(NULL, response);
+		return;
+	} else if (!strncmp("nand", operation, 4)){
+		if (clear_mtd("spi-nand0", erase_size))
+			fastboot_fail("erase nand fail", response);
+		else
+			fastboot_okay(NULL, response);
+		return;
+	}
+
+	fastboot_response("FAIL", response, "not support erase operation:%s", operation);
+	return;
+}
+
+#endif /*CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ERASE)*/

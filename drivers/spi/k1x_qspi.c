@@ -275,10 +275,12 @@ static void qspi_set_func_clk(struct k1x_qspi *qspi)
 	clk_disable(&qspi->bus_clk);
 	clk_disable(&qspi->clk);
 
-	reset_deassert_bulk(&qspi->resets);
-	clk_enable(&qspi->bus_clk);
 	clk_set_rate(&qspi->clk, qspi->max_hz);
 	clk_enable(&qspi->clk);
+	clk_enable(&qspi->bus_clk);
+	reset_deassert_bulk(&qspi->resets);
+	dev_info(qspi->dev, "bus clock: %dHz, PMUap reg[0x%08x]:0x%08x\n",
+			qspi->max_hz, qspi->pmuap_reg, readl((void __iomem *)((unsigned long)qspi->pmuap_reg)));
 }
 
 static int qspi_reset(struct k1x_qspi *qspi)

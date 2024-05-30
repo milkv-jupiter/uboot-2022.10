@@ -188,10 +188,10 @@
 		dr_mode = "host";
 		phy_type = "utmi";
 		snps,dis_enblslpm_quirk;
-		snps,dis-u2-freeclk-exists-quirk;
-		snps,dis-del-phy-power-chg-quirk;
 		snps,dis_u2_susphy_quirk;
 		snps,dis_u3_susphy_quirk;
+		snps,dis-del-phy-power-chg-quirk;
+		snps,dis-tx-ipgap-linecheck-quirk;
 	};
 };
 
@@ -200,7 +200,6 @@
 	pinctrl-0 = <&pinctrl_mmc1 &gpio80_pmx_func0>;
 	bus-width = <4>;
 	cd-gpios = <&gpio 80 0>;
-	cd-inverted;
 	cap-sd-highspeed;
 	sdh-phy-module = <0>;
 	clk-src-freq = <204800000>;
@@ -257,7 +256,7 @@
 	status = "okay";
 };
 
-/*&qspi {
+&qspi {
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_qspi>;
@@ -270,7 +269,7 @@
 		broken-flash-reset;
 		status = "okay";
 	};
-};*/
+};
 
 &efuse {
 	status = "okay";

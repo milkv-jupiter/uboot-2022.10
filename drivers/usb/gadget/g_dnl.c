@@ -220,7 +220,9 @@ static int g_dnl_get_bcd_device_number(struct usb_composite_dev *cdev)
 static int on_serialno(const char *name, const char *value, enum env_op op,
 		int flags)
 {
+#ifdef CONFIG_USB_SET_SERIAL_NUMBER
 	g_dnl_set_serialnumber((char *)value);
+#endif
 	return 0;
 }
 U_BOOT_ENV_CALLBACK(serialno, on_serialno);

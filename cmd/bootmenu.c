@@ -17,6 +17,10 @@
 #include <linux/delay.h>
 #include <linux/string.h>
 
+#ifdef CONFIG_VIDEO_SPACEMIT
+extern bool is_video_connected;
+#endif
+
 /* maximum bootmenu entries */
 #define MAX_COUNT	99
 
@@ -600,7 +604,14 @@ int menu_show(int bootdelay)
 		return 0;
 #endif
 
-	env_set("stdout","serial,vidconsole");
+#ifdef CONFIG_VIDEO_SPACEMIT
+	printf("menu_show:is_video_connected: %d\n", is_video_connected);
+	if (is_video_connected) {
+		env_set("stdout", "serial,vidconsole");
+	} else {
+		env_set("stdout", "serial");
+	}
+#endif
 
 	while (1) {
 		ret = bootmenu_show(bootdelay);
@@ -616,7 +627,8 @@ int menu_show(int bootdelay)
 
 				run_command("run bootcmd", 0);
 			}
-		} else {
+		}
+		if (ret == BOOTMENU_RET_QUIT) {
 			break;
 		}
 	}

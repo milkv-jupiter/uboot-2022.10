@@ -5,6 +5,8 @@
 #include <asm/io.h>
 #include <common.h>
 #include <asm/global_data.h>
+#include <stdlib.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -19,6 +21,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PULL_UP		BIT(14) | BIT(15)	/* pull-up */
 
 #define I2C_PIN_CONFIG(x)	((x) | EDGE_NONE | PULL_UP | PAD_1V8_DS2)
+#define READ_I2C_LINE_LEN (16)
 
 char *spacemit_i2c_eeprom[] = {
 	"atmel,24c02",
@@ -122,3 +125,65 @@ int k1x_eeprom_init(void)
 
 	return -EINVAL;
 }
+
+int _read_from_i2c(int chip, u32 addr, u32 size, uchar *buf)
+{
+	u32 nbytes = size;
+	u32 linebytes = 0;
+	int ret;
+
+	do {
+		linebytes = (nbytes > READ_I2C_LINE_LEN) ? READ_I2C_LINE_LEN : nbytes;
+		ret = i2c_read(chip, addr, 1, buf, linebytes);
+		if (ret){
+			pr_err("read from i2c error:%d\n", ret);
+			return -1;
+		}
+
+		buf += linebytes;
+		nbytes -= linebytes;
+		addr += linebytes;
+	} while (nbytes > 0);
+
+	return 0;
+}
+
+int _write_to_i2c(int chip, u32 addr, u32 size, uchar *buf)
+{
+	uint nbytes = size;
+	int ret;
+
+	while (nbytes-- > 0) {
+		ret = i2c_write(chip, addr++, 1, buf++, 1);
+		if (ret){
+			pr_err("write to i2c error:%d\n", ret);
+			return -1;
+		}
+/*
+ * No write delay with FRAM devices.
+ */
+#if !defined(CONFIG_SYS_I2C_FRAM)
+		udelay(11000);
+#endif
+	}
+	return 0;
+}
+
+int clear_eeprom(u32 dev, u32 erase_size)
+{
+	char *blank_buf = calloc(0, erase_size);
+
+	int chip = k1x_eeprom_init();
+	if (chip < 0){
+		pr_err("can not get i2c bus addr\n");
+		return -1;
+	}
+
+	if (_write_to_i2c(chip, 0, erase_size, blank_buf)){
+		pr_err("clear eeprom fail\n");
+		return -1;
+	}
+	free(blank_buf);
+	return 0;
+}
+

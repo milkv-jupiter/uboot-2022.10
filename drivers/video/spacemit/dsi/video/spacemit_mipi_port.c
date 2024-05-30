@@ -406,7 +406,10 @@ static int lcd_bl_enable(struct video_tx_device *dev, bool enable)
 				video_tx_get_drvdata(dev);
 	struct spacemit_panel_priv *priv = video_tx_client->priv;
 
-	dm_gpio_set_value(&priv->bl, 1);
+	if (enable)
+		dm_gpio_set_value(&priv->bl, 1);
+	else
+		dm_gpio_set_value(&priv->bl, 0);
 
 	return 0;
 }

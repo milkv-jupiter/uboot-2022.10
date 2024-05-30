@@ -3837,6 +3837,128 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 #endif /* SPI_FLASH_MACRONIX */
 }
 
+
+/*clear CMP and LB in order to unlock the protect area*/
+static int generic_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
+{
+	int ret;
+	u8 val[1] = {0};
+
+	/*if not define SPI_NOR_HAS_LOCK flag, it should not clear the protect bit*/
+	if (!(nor->info->flags & SPI_NOR_HAS_LOCK))
+		return 0;
+
+	/*read register 1*/
+	ret = nor->read_reg(nor, SPINOR_OP_RDSR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error %d reading CR\n", ret);
+		return ret;
+	}
+
+	/*clear block protect bit at register 1*/
+	val[0] &= ~(SR_BP0 | SR_BP1 | SR_BP2 | SR_TB | SR_SP);
+	write_enable(nor);
+	ret = nor->write_reg(nor, SPINOR_OP_WRSR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error while writing configuration register\n");
+		return ret;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_dbg(nor->dev, "timeout while writing configuration register\n");
+		return ret;
+	}
+
+
+	/*read register 2*/
+	ret = nor->read_reg(nor, SPINOR_OP_RDCR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error %d reading CR\n", ret);
+		return ret;
+	}
+
+	/*write register 2*/
+	val[0] &= ~(SR_LB1 | SR_LB2 | SR_LB3 | SR_CMP);
+	write_enable(nor);
+	ret = nor->write_reg(nor, SPINOR_OP_WDCR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_dbg(nor->dev, "timeout while writing configuration register\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+/* set protect area */
+static int generic_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
+{
+	/* TODO: should protect area by offset and len*/
+
+	int ret;
+	u8 val[1] = {0};
+
+	/*if not define SPI_NOR_HAS_LOCK flag, it should not clear the protect bit*/
+	if (!(nor->info->flags & SPI_NOR_HAS_LOCK))
+		return 0;
+
+	/*if unlock size is not equal to all size, return*/
+	if (nor->size != len && ofs != 0)
+		return 0;
+
+	/*read register 1*/
+	ret = nor->read_reg(nor, SPINOR_OP_RDSR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error %d reading CR\n", ret);
+		return ret;
+	}
+
+	/*clear block protect bit at register 1*/
+	val[0] &= ~(SR_BP0 | SR_BP1 | SR_BP2);
+	write_enable(nor);
+	ret = nor->write_reg(nor, SPINOR_OP_WRSR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error while writing configuration register\n");
+		return ret;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_dbg(nor->dev, "timeout while writing configuration register\n");
+		return ret;
+	}
+
+	/*read register 2*/
+	ret = nor->read_reg(nor, SPINOR_OP_RDCR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error %d reading CR\n", ret);
+		return ret;
+	}
+
+	/*write register 2*/
+	val[0] |= SR_CMP;
+	write_enable(nor);
+	ret = nor->write_reg(nor, SPINOR_OP_WDCR, val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_dbg(nor->dev, "timeout while writing configuration register\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 int spi_nor_scan(struct spi_nor *nor)
 {
 	struct spi_nor_flash_parameter params;
@@ -3939,6 +4061,12 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_is_unlocked = sst26_is_unlocked;
 	}
 #endif
+
+	/* if not define flash_unlock, use generic clear func*/
+	if (!nor->flash_unlock){
+		nor->flash_unlock = generic_unlock;
+		nor->flash_lock = generic_lock;
+	}
 
 	if (info->flags & USE_FSR)
 		nor->flags |= SNOR_F_USE_FSR;

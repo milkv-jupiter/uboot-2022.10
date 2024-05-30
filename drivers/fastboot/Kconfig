@@ -275,6 +275,24 @@ config FASTBOOT_CMD_OEM_CONFIG_ACCESS
 	  Add support for the "oem config:read/write/flush" command from a fastboot client. This command
 	  include configuration read, write and flush operation.
 
+config SPL_FASTBOOT_CMD_OEM_CONFIG_ACCESS
+	bool "Enable the 'oem config' command in SPL"
+	help
+	  Add support for the "oem config:read/write/flush" command from a fastboot client. This command
+	  include configuration read, write and flush operation.
+
+config FASTBOOT_CMD_OEM_ERASE
+	bool "Enable the 'oem erase' command"
+	help
+	  Add support for the "oem erase:[eeprom, emmc]" command from a fastboot client. This command
+	  include configuration eeprom or emmc.
+
+config SPL_FASTBOOT_CMD_OEM_ERASE
+	bool "Enable the 'oem erase' command in SPL"
+	help
+	  Add support for the "oem erase:[eeprom, emmc]" command from a fastboot client. This command
+	  include configuration eeprom or emmc.
+
 config FASTBOOT_CMD_OEM_ENV_ACCESS
 	bool "Enable the 'oem env' command"
 	help

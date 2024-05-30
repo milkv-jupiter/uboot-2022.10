@@ -533,7 +533,7 @@ static int do_del_mtd_partitions(struct mtd_info *master)
 		debug("Deleting %s MTD partition\n", slave->name);
 		ret = del_mtd_device(slave);
 		if (ret < 0) {
-			pr_err("Error when deleting partition \"%s\" (%d)\n",
+			pr_debug("Error when deleting partition \"%s\" (%d)\n",
 			       slave->name, ret);
 			err = ret;
 			continue;

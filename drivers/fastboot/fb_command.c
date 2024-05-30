@@ -69,6 +69,10 @@ static void oem_read(char *cmd_parameter, char *response);
 static void oem_config(char *cmd_parameter, char *response);
 #endif
 
+#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ERASE)
+static void oem_erase(char *cmd_parameter, char *response);
+#endif
+
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ENV_ACCESS)
 static void oem_env(char *cmd_parameter, char *response);
 #endif
@@ -165,6 +169,12 @@ static const struct {
 	[FASTBOOT_COMMAND_CONFIG_ACCESS] = {
 		.command = "oem config",
 		.dispatch = oem_config,
+	},
+#endif
+#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ERASE)
+	[FASTBOOT_COMMAND_OEM_ERASE] = {
+		.command = "oem erase",
+		.dispatch = oem_erase,
 	},
 #endif
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ENV_ACCESS)
@@ -814,6 +824,20 @@ static void oem_config(char *cmd_parameter, char *response)
 	operation = strsep(&cmd_str, " ");
 
     fastboot_config_access(operation, cmd_str, response);
+}
+#endif
+
+#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ERASE)
+/**
+ * oem_erase() - Execute the OEM erase command
+ *
+ * @cmd_parameter: Pointer to command parameter
+ * @response: Pointer to fastboot response buffer
+ */
+static void oem_erase(char *cmd_parameter, char *response)
+{
+	clear_storage_data(cmd_parameter, response);
+	return;
 }
 #endif
 

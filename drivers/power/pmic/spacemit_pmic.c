@@ -82,7 +82,9 @@ static const struct pmic_child_info pmic_children_info[] = {
 static int pm8xx_bind(struct udevice *dev)
 {
 	ofnode regulators_node;
+	ofnode pmic_reset_node;
 	int children;
+	int ret;
 
 	regulators_node = dev_read_subnode(dev, "regulators");
 	if (!ofnode_valid(regulators_node)) {
@@ -96,6 +98,15 @@ static int pm8xx_bind(struct udevice *dev)
 	children = pmic_bind_children(dev, regulators_node, pmic_children_info);
 	if (!children)
 		debug("%s: %s - no child found\n", __func__, dev->name);
+
+	pmic_reset_node = dev_read_subnode(dev, "pmic-reset");
+	if (ofnode_valid(pmic_reset_node) && ofnode_is_available(pmic_reset_node)) {
+		debug("Binding pmic-reset node\n");
+		ret = device_bind_driver_to_node(dev, "pmic_sysreset", "pmic_sysreset", pmic_reset_node, NULL);
+		if (ret) {
+			debug("Failed to bind pmic_sysreset driver: %d\n", ret);
+		}
+	}
 
 	/* Always return success for this device */
 	return 0;

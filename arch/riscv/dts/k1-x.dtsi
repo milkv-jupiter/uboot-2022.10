@@ -28,7 +28,7 @@
 			device_type = "cpu";
 			reg = <0>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu0_intc: interrupt-controller {
@@ -42,7 +42,7 @@
 			device_type = "cpu";
 			reg = <1>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu1_intc: interrupt-controller {
@@ -56,7 +56,7 @@
 			device_type = "cpu";
 			reg = <2>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu2_intc: interrupt-controller {
@@ -70,7 +70,7 @@
 			device_type = "cpu";
 			reg = <3>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu3_intc: interrupt-controller {
@@ -84,7 +84,7 @@
 			device_type = "cpu";
 			reg = <4>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu4_intc: interrupt-controller {
@@ -98,7 +98,7 @@
 			device_type = "cpu";
 			reg = <5>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu5_intc: interrupt-controller {
@@ -112,7 +112,7 @@
 			device_type = "cpu";
 			reg = <6>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu6_intc: interrupt-controller {
@@ -126,7 +126,7 @@
 			device_type = "cpu";
 			reg = <7>;
 			status = "okay";
-			riscv,isa = "rv64imafdcvsu_zicsr_zifencei_zicbom_zihintpause_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
 			mmu-type = "riscv,sv39";
 
 			cpu7_intc: interrupt-controller {
@@ -872,4 +872,20 @@
 			 */
 			<0x0 0x0 0xffffffff 0xffffff00 0x0007fff8>;
 	};
+
+	watchdog:watchdog@D4080000 {
+		compatible = "spacemit,k1x-wdt";
+		reg = <0x0 0xD4080000 0x0 0x1000>,
+			  <0x0 0xD4051020 0x0 0x4>;
+		clocks = <&ccu CLK_WDT>;
+		resets = <&reset RESET_WDT>;
+		status = "okay";
+	};
+
+	wdt_reboot {
+		compatible = "wdt-reboot";
+		wdt = <&watchdog>;
+		status = "okay";
+	};
+
 };

@@ -26,7 +26,9 @@ configure)
             FSBL=/dev/mmcblk0p1
             FSBL_SEEK=0
             ENV=/dev/mmcblk0p2
+            ENV_SEEK=0
             UBOOT=/dev/mmcblk0p4
+            UBOOT_SEEK=0
             ;;
         "/dev/mmcblk2"*)
             BOOTINFO_FILE=bootinfo_emmc.bin
@@ -34,12 +36,25 @@ configure)
             FSBL=/dev/mmcblk2boot0
             FSBL_SEEK=512
             ENV=/dev/mmcblk2p2
+            ENV_SEEK=0
             UBOOT=/dev/mmcblk2p4
+            UBOOT_SEEK=0
             if [ -e $BOOTINFO ]; then
                 echo 0 | tee /sys/block/mmcblk2boot0/force_ro
             else
                 exit 0
             fi
+            ;;
+        "/dev/nvme0n1"*)
+            BOOTINFO_FILE=bootinfo_spinor.bin
+            BOOTINFO=/dev/mtdblock0
+            FSBL=/dev/mtdblock0
+            FSBL_SEEK=$((128 * 1024))
+            ENV=/dev/mtdblock0
+            ENV_SEEK=$((384 * 1024))
+            UBOOT=/dev/mtdblock0
+            # 以KB为单位
+            UBOOT_SEEK=640
             ;;
         *)
             echo "Unsupported root=$ROOT"
@@ -65,8 +80,8 @@ configure)
     # 此前已经做了所有检查
     dd if=/usr/lib/u-boot/$target/$BOOTINFO_FILE of=$BOOTINFO && sync
     dd if=/usr/lib/u-boot/$target/FSBL.bin of=$FSBL seek=$FSBL_SEEK bs=1 && sync
-    dd if=/usr/lib/u-boot/$target/env.bin of=$ENV bs=1 && sync
-    dd if=/usr/lib/u-boot/$target/u-boot.itb of=$UBOOT bs=1M && sync
+    dd if=/usr/lib/u-boot/$target/env.bin of=$ENV seek=$ENV_SEEK bs=1 && sync
+    dd if=/usr/lib/u-boot/$target/u-boot.itb of=$UBOOT seek=$UBOOT_SEEK bs=1K && sync
 
     ;;
 esac

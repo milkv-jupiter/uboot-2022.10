@@ -12,6 +12,13 @@
 		bus = <8>;
 		u-boot,dm-spl;
 
+		pmic-reset {
+			compatible = "spacemit,spm8821-reset";
+			reboot-reg = <0x7e>;    /* Address of the reboot register */
+			reboot-mask = <0x02>;   /* Bit mask for triggering a reboot */
+			status = "okay";
+		};
+
 		regulators {
 			/* buck */
 			dcdc_6: DCDC_REG1 {

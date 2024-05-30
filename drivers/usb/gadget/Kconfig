@@ -263,4 +263,10 @@ config USBNET_HOST_ADDR
 
 endif # USB_ETHER
 
+config USB_SET_SERIAL_NUMBER
+	bool "set serial number while binding usb fastboot device"
+	default y
+	help
+	  enable to set serial number while binding fastboot devices
+
 endif # USB_GADGET

@@ -526,10 +526,20 @@ void board_init_f(ulong dummy)
 int board_fit_config_name_match(const char *name)
 {
 	char *buildin_name;
+	char tmp_name[64];
 
 	buildin_name = product_name;
 	if (NULL == buildin_name)
 		buildin_name = DEFAULT_PRODUCT_NAME;
+
+	/*
+		be compatible to previous format name,
+		such as: k1_deb1 -> k1-x_deb1
+	*/
+	if (!strncmp(buildin_name, "k1_", 3)){
+		sprintf(tmp_name, "%s_%s", "k1-x", &buildin_name[3]);
+		buildin_name = tmp_name;
+	}
 
 	if ((NULL != buildin_name) && (0 == strcmp(buildin_name, name))) {
 		log_emerg("Boot from fit configuration %s\n", name);
@@ -643,22 +653,12 @@ char *get_product_name(void)
 {
 	char *name = NULL;
 	int eeprom_addr;
-	char tmp_name[64];
 
 	eeprom_addr = k1x_eeprom_init();
 	name = calloc(1, 64);
 	if ((eeprom_addr >= 0) && (NULL != name) && (0 == spacemit_eeprom_read(
 		eeprom_addr, name, TLV_CODE_PRODUCT_NAME))) {
 		pr_info("Get product name from eeprom %s\n", name);
-
-		/*
-			be compatible to previous format name,
-			such as: k1_deb1 -> k1-x_deb1
-		*/
-		if (strncmp(name, CONFIG_SYS_BOARD, 4)){
-			sprintf(tmp_name, "%s_%s", CONFIG_SYS_BOARD, &name[3]);
-			strcpy(name, tmp_name);
-		}
 		return name;
 	}
 

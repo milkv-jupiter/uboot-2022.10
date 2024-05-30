@@ -262,9 +262,10 @@ static int fastboot_bind(struct usb_configuration *c, struct usb_function *f)
 	}
 
 	s = env_get("serial#");
+#ifdef CONFIG_USB_SET_SERIAL_NUMBER
 	if (s)
 		g_dnl_set_serialnumber((char *)s);
-
+#endif
 	return 0;
 }
 

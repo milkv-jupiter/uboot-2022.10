@@ -8,91 +8,77 @@
 #include <errno.h>
 #include <sysreset.h>
 #include <asm/io.h>
-#include <linux/err.h>
+#include <linux/bitops.h>
 #include <linux/delay.h>
+#include <power/pmic.h>
 
-/*wdt*/
-#define K1X_WDT_REG (0xd4080000)
-#define K1X_WDT_ENABLE (0xd4080000 + 0xb8)
-#define K1X_WDT_TIMEOUT (0xd4080000 + 0xbc)
-#define K1X_WDT_RESET (0xd4080000 + 0xc8)
-#define K1X_WDT_STATUS (0xd4080000 + 0xc0)
-#define K1X_WDT_WSAR        (0xd4080000 + 0x00b4)
-#define K1X_WDT_WFAR        (0xd4080000 + 0x00b0)
+struct pmic_sysreset_data {
+	u32 reboot_reg;
+	u32 reboot_mask;
+	int type;
+};
 
-#define WDT_CLEAR_STATUS (0x0)
-#define WDT_RESET_ENABLE (0x1)
-#define WDT_ENABLE (0x3)
-#define WDT_TIMEOUT (0x1)
-
-#define K1X_WDT_START_REG  (0xd4051020)
-#define K1X_WDT_START_ENABLE  (BIT(4))
-
-#define K1X_WDT_CLK_RESET_REG (0xd4050200)
-#define K1X_WDT_MPU_REG (0xd4051024)
-#define K1X_WDT_CLK_RESET_ENABLE (0x3)
-#define K1X_WDT_CLK_RESET_FLAG (BIT(2))
-#define K1X_WDT_CLK_ENABLE_MPU (BIT(19))
-
-static void spa_wdt_write_access(void)
-{
-	writel(0xbaba, (void *)K1X_WDT_WFAR);
-	writel(0xeb10, (void *)K1X_WDT_WSAR);
-}
-
-static void spa_wdt_write(u32 val, void *reg)
-{
-	spa_wdt_write_access();
-	writel(val, reg);
-}
-
-static void enable_wdt(void)
-{
-	u32 reg;
-
-	/*enable wdt clk reset*/
-	reg = readl((void *)K1X_WDT_MPU_REG);
-	writel(K1X_WDT_CLK_ENABLE_MPU | reg, (void *)K1X_WDT_MPU_REG);
-
-	reg = readl((void *)K1X_WDT_CLK_RESET_REG);
-	writel(K1X_WDT_CLK_RESET_ENABLE | reg, (void *)K1X_WDT_CLK_RESET_REG);
-	reg = readl((void *)K1X_WDT_CLK_RESET_REG);
-	writel((~K1X_WDT_CLK_RESET_FLAG) & reg,(void *)K1X_WDT_CLK_RESET_REG);
-
-
-	/*set watch dog*/
-	spa_wdt_write(WDT_CLEAR_STATUS, (void *)K1X_WDT_STATUS);
-	spa_wdt_write(WDT_TIMEOUT, (void *)K1X_WDT_TIMEOUT);
-	spa_wdt_write(WDT_ENABLE, (void *)K1X_WDT_ENABLE);
-	spa_wdt_write(WDT_RESET_ENABLE, (void *)K1X_WDT_RESET);
-
-	reg = readl((void*)K1X_WDT_START_REG);
-	writel(K1X_WDT_START_ENABLE | reg, (void *)K1X_WDT_START_REG);
-}
-
-static int spacemit_sysreset_request(struct udevice *dev, enum sysreset_t type)
-{
-	enable_wdt();
-	/*wait for reset*/
-	mdelay(5000);
-
-	/*if reset success, it would never return*/
-	return -EINPROGRESS;
-}
-
-static int spacemit_sysreset_probe(struct udevice *dev)
-{
+static int pmic_sysreboot_types(const char *compat) {
+	if (!strcmp(compat, "spacemit,spm8821-reset"))
+		return 1;
 	return 0;
 }
 
+static int pmic_sysreset_request(struct udevice *dev, enum sysreset_t type)
+{
+	struct pmic_sysreset_data *data = dev_get_priv(dev);
+	struct udevice *pmic_dev;
+	int ret, value;
 
-static struct sysreset_ops spacemit_sysreset = {
-	.request	= spacemit_sysreset_request,
+	ret = uclass_get_device(UCLASS_PMIC, 0, &pmic_dev);
+	if (ret) {
+		pr_err("Failed to find PMIC device\n");
+		return ret;
+	}
+
+	switch (data->type) {
+		case 1:
+			value = pmic_reg_read(pmic_dev, data->reboot_reg);
+			if (ret) {
+				pr_err("Failed to read reboot register for spm8821: %d\n", ret);
+				return ret;
+			}
+			value |= data->reboot_mask;
+			ret = pmic_reg_write(pmic_dev, data->reboot_reg, value);
+			if (ret) {
+				pr_err("Failed to write reboot register for spm8821: %d\n", ret);
+				return ret;
+			}
+			break;
+		default:
+			pr_err("Unsupported PMIC type for sysreset\n");
+			return -ENOSYS;
+	}
+
+	mdelay(100);
+	return -EINPROGRESS;
+}
+
+static int pmic_sysreset_probe(struct udevice *dev)
+{
+	struct pmic_sysreset_data *data = dev_get_priv(dev);
+	const char *compat = dev_read_string(dev, "compatible");
+
+	data->reboot_reg = dev_read_u32_default(dev, "reboot-reg", 0);
+	data->reboot_mask = dev_read_u32_default(dev, "reboot-mask", 0);
+	data->type = pmic_sysreboot_types(compat);
+
+	return 0;
+}
+
+static struct sysreset_ops pmic_sysreset_ops = {
+	.request = pmic_sysreset_request,
 };
 
-U_BOOT_DRIVER(spacemit_sysreset) = {
-	.name	= "spacemit_sysreset",
-	.id	= UCLASS_SYSRESET,
-	.ops	= &spacemit_sysreset,
-	.probe  = spacemit_sysreset_probe,
+U_BOOT_DRIVER(pmic_sysreset) = {
+	.name   = "pmic_sysreset",
+	.id     = UCLASS_SYSRESET,
+	.priv_auto = sizeof(struct pmic_sysreset_data),
+	.ops    = &pmic_sysreset_ops,
+	.probe  = pmic_sysreset_probe,
 };

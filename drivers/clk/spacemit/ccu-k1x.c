@@ -261,9 +261,9 @@ static SPACEMIT_CCU_GATE_NO_PARENT(usb30_clk, "usb30_clk", NULL,
 	0);
 static const char * const qspi_parent_names[] = {"clk_dummy", "clk_dummy", "clk_dummy",
 		"clk_dummy", "clk_dummy", "pll1_d23_106p8"};
-static SPACEMIT_CCU_DIV_MFC_MUX_GATE(qspi_clk, "qspi_clk", qspi_parent_names,
+static SPACEMIT_CCU_DIV_MUX_GATE(qspi_clk, "qspi_clk", qspi_parent_names,
 	BASE_TYPE_APMU, APMU_QSPI_CLK_RES_CTRL,
-	9, 3, BIT(12),
+	9, 3,
 	6, 3, BIT(4), BIT(4), 0x0,
 	0);
 static SPACEMIT_CCU_GATE_NO_PARENT(qspi_bus_clk, "qspi_bus_clk", NULL,

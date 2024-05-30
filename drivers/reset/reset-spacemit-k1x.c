@@ -408,7 +408,7 @@ static void spacemit_reset_set(struct reset_ctl *rst,
 	u32 value;
 	struct spacemit_reset *reset = dev_get_priv(rst->dev);
 
-	pr_info("[RESET]spacemit_reset_set assert=%d, id=%d \r\n", assert, id);
+	pr_debug("[RESET]spacemit_reset_set assert=%d, id=%d \r\n", assert, id);
 	value = spacemit_reset_read(reset, id);
 	if(assert == true) {
 		value &= ~ reset->signals[id].mask;
