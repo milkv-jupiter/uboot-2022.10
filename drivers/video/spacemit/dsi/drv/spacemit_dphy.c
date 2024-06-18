@@ -78,7 +78,7 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	bit_clk = dphy_ctx->phy_freq / 1000;
 	ui = 1000/bit_clk + 1;
 
-	pr_info("%s: esc_clk %d bit_clk %d\n", __func__, esc_clk, bit_clk);
+	pr_debug("%s: esc_clk %d bit_clk %d\n", __func__, esc_clk, bit_clk);
 
 	lpx_clk = (phy_timing->lpx_constant + phy_timing->lpx_ui * ui) / esc_clk_t + 1;
 	lpx_time = lpx_clk * esc_clk_t;

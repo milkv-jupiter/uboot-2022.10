@@ -356,7 +356,7 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 		uc_priv->xsize = spacemit_mode->xres;
 		uc_priv->ysize = spacemit_mode->yres;
 
-		pr_info("%s: panel type %d\n", __func__, fbi.tx->panel_type);
+		pr_debug("%s: panel type %d\n", __func__, fbi.tx->panel_type);
 
 		if (fbi.tx->panel_type == LCD_MIPI) {
 			dsi_dpu_init(spacemit_mode, fbbase);

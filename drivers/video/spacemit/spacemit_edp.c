@@ -80,7 +80,7 @@ static u8 LT8911EXB_IIC_Read_byte(struct udevice *dev, u8 reg)
 	err = dm_i2c_read(dev, reg, &valb, 1);
 	if (err)
 		return err;
-	mdelay(10);
+	udelay(100);
 
 	return (int)valb;
 
@@ -89,7 +89,7 @@ static u8 LT8911EXB_IIC_Read_byte(struct udevice *dev, u8 reg)
 static void LT8911EXB_IIC_Write_byte(struct udevice *dev,u8 reg, u8 val)
 {
 	dm_i2c_write(dev, reg, &val, 1);
-	mdelay(10);
+	udelay(100);
 }
 
 enum {
@@ -158,9 +158,9 @@ void Reset_LT8911EXB(struct udevice *dev)
 	pr_debug("%s: device %s\n", __func__, dev->name);
 
 	dm_gpio_set_value(&priv->reset_gpio, 1);
-	mdelay(150);
+	mdelay(50);
 	dm_gpio_set_value(&priv->reset_gpio, 0);
-	mdelay(150);
+	mdelay(50);
 	dm_gpio_set_value(&priv->reset_gpio, 1);
 	mdelay(150);
 
@@ -721,7 +721,8 @@ void LT8911EXB_video_check(struct udevice *dev)
 	LT8911EXB_IIC_Write_byte(dev, 0x09, 0xfd );
 
 	LT8911EXB_IIC_Write_byte(dev, 0xff, 0x85 );
-	mdelay( 200 );
+
+	mdelay(100);
 	if( LT8911EXB_IIC_Read_byte(dev, 0x50 ) == 0x03 )
 	{
 		reg	   = LT8911EXB_IIC_Read_byte(dev, 0x4d );
@@ -907,33 +908,33 @@ void LT8911EX_link_train(struct udevice *dev)
 #endif
 }
 
-void LT8911EX_link_train_result(struct udevice *dev)
-{
-	u8 i, reg;
-	LT8911EXB_IIC_Write_byte(dev, 0xff, 0xac );
-	for( i = 0; i < 10; i++ )
-	{
-		reg = LT8911EXB_IIC_Read_byte(dev, 0x82 );
-		if( reg & 0x20 )
-		{
-			if( ( reg & 0x1f ) == 0x1e )
-			{
-				pr_debug( "\r\nLink train success, 0x82 = 0x%x", reg );
-			} else
-			{
-				pr_debug( "\r\nLink train fail, 0x82 = 0x%x", reg );
-			}
+// void LT8911EX_link_train_result(struct udevice *dev)
+// {
+// 	u8 i, reg;
+// 	LT8911EXB_IIC_Write_byte(dev, 0xff, 0xac );
+// 	for( i = 0; i < 10; i++ )
+// 	{
+// 		reg = LT8911EXB_IIC_Read_byte(dev, 0x82 );
+// 		if( reg & 0x20 )
+// 		{
+// 			if( ( reg & 0x1f ) == 0x1e )
+// 			{
+// 				pr_debug( "\r\nLink train success, 0x82 = 0x%x", reg );
+// 			} else
+// 			{
+// 				pr_debug( "\r\nLink train fail, 0x82 = 0x%x", reg );
+// 			}
 
-			pr_debug( "\r\npanel link rate: 0x%x", LT8911EXB_IIC_Read_byte(dev, 0x83 ) );
-			pr_debug( "\r\npanel link count: 0x%x", LT8911EXB_IIC_Read_byte(dev, 0x84 ) );
-			return;
-		}else
-		{
-			pr_debug( "\r\nlink trian on going..." );
-		}
-		mdelay( 100 );
-	}
-}
+// 			pr_debug( "\r\npanel link rate: 0x%x", LT8911EXB_IIC_Read_byte(dev, 0x83 ) );
+// 			pr_debug( "\r\npanel link count: 0x%x", LT8911EXB_IIC_Read_byte(dev, 0x84 ) );
+// 			return;
+// 		}else
+// 		{
+// 			pr_debug( "\r\nlink trian on going..." );
+// 		}
+// 		mdelay( 100 );
+// 	}
+// }
 
 enum
 {
@@ -1062,7 +1063,7 @@ static int edp_panel_enable_backlight(struct udevice *dev)
 	ScrambleMode = 0;
 	LT8911EX_link_train(dev);
 	LT8911EXB_LinkTrainResultCheck(dev);
-	LT8911EX_link_train_result(dev);	// for debug
+	// LT8911EX_link_train_result(dev);	// for debug
 
 	LT8911EXB_video_check(dev);		// just for Check MIPI Input
 
@@ -1125,7 +1126,7 @@ static int edp_panel_probe(struct udevice *dev)
 	dm_gpio_set_value(&priv->enable_gpio, 1);
 	dm_gpio_set_value(&priv->standby_gpio, 1);
 	dm_gpio_set_value(&priv->bl_gpio, 1);
-	mdelay(100);
+	mdelay(50);
 
 	Reset_LT8911EXB(dev);
 
