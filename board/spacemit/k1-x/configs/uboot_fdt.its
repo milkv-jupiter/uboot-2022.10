@@ -100,6 +100,24 @@
 				algo = "crc32";
 			};
 		};
+		fdt_10 {
+			description = "k1-x_milkv-jupiter";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_milkv-jupiter.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
+		fdt_11 {
+			description = "k1-x_MUSE-Book.dtb";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_MUSE-Book.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
 	};
 
 	configurations {
@@ -148,6 +166,16 @@
 			description = "k1-x_MUSE-Pi";
 			loadables = "uboot";
 			fdt = "fdt_9";
+		};
+		conf_10 {
+			description = "k1-x_milkv-jupiter";
+			loadables = "uboot";
+			fdt = "fdt_10";
+		};
+		conf_11 {
+			description = "k1-x_MUSE-Book";
+			loadables = "uboot";
+			fdt = "fdt_11";
 		};
 	};
 };

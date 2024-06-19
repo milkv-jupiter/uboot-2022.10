@@ -657,6 +657,54 @@
 			};
 		};
 
+		spi0: spi0@d4026000 {
+			compatible = "spacemit,k1x-spi";
+			reg = <0x0 0xd4026000 0x0 0x30>;
+			clocks = <&ccu CLK_SSPA0>;
+			resets = <&reset RESET_SSPA0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <26000000>;
+			port = <0>;
+			status = "disabled";
+		};
+
+		spi1: spi1@d4026800 {
+			compatible = "spacemit,k1x-spi";
+			reg = <0x0 0xd4026800 0x0 0x30>;
+			clocks = <&ccu CLK_SSPA1>;
+			resets = <&reset RESET_SSPA1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <26000000>;
+			port = <1>;
+			status = "disabled";
+		};
+
+		spi2: spi2@f0613000 {
+			compatible = "spacemit,k1x-spi";
+			reg = <0x0 0xf0614000 0x0 0x30>;
+			clocks = <&ccu CLK_SEC_SSP2>;
+			resets = <&reset RESET_SEC_SSP2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <26000000>;
+			port = <2>;
+			status = "disabled";
+		};
+
+		spi3: spi3@d401c000 {
+			compatible = "spacemit,k1x-spi";
+			reg = <0x0 0xd401c000 0x0 0x30>;
+			clocks = <&ccu CLK_SSP3>;
+			resets = <&reset RESET_SSP3>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <26000000>;
+			port = <3>;
+			status = "disabled";
+		};
+
 		qspi: spi@d420c000 {
 			compatible = "spacemit,k1x-qspi";
 			#address-cells = <1>;
@@ -701,9 +749,9 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				dpu_out_mipi: endpoint@0 {
+				dpu_out_dsi: endpoint@0 {
 					reg = <0>;
-					remote-endpoint = <&mipi_in_dpu>;
+					remote-endpoint = <&dsi_in_dpu>;
 				};
 
 				dpu_out_hdmi: endpoint@1 {
@@ -737,9 +785,9 @@
 				mipi_in: port {
 					#address-cells = <1>;
 					#size-cells = <0>;
-					mipi_in_dpu: endpoint@0 {
+					dsi_in_dpu: endpoint@0 {
 						reg = <0>;
-						remote-endpoint = <&dpu_out_mipi>;
+						remote-endpoint = <&dpu_out_dsi>;
 					};
 				};
 			};
@@ -884,7 +932,6 @@
 
 	wdt_reboot {
 		compatible = "wdt-reboot";
-		wdt = <&watchdog>;
 		status = "okay";
 	};
 

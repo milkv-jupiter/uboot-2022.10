@@ -119,6 +119,14 @@ static u32 mode_register_read(u32 MR, u32 CH, u32 CS)
 	return UI3;
 }
 
+u32 ddr_get_mr8(void)
+{
+	u32 mr8;
+	mr8 = mode_register_read(8, 0, 0);
+	return (mr8&0xff);
+}
+
+#ifdef CONFIG_SPL_BUILD
 static u32 format_size(u32 density, u32 io_width)
 {
 	u32 size = 0;
@@ -154,21 +162,42 @@ static u32 format_size(u32 density, u32 io_width)
 
 	return size;
 }
-
-u32 ddr_get_mr8(void)
+#else
+static inline u32 map_format_size(u32 val)
 {
-	u32 mr8;
-	mr8 = mode_register_read(8, 0, 0);
-	return (mr8&0xff);
+	u32 tmp;
+
+	tmp = (val & 0x1);
+	if (tmp == 0)
+		return 0;
+	tmp = (val & 0x1f0000) >> 16;
+	switch (tmp) {
+	case 0xd:
+		return 512;
+	case 0xe:
+		return 1024;
+	case 0xf:
+		return 2048;
+	case 0x10:
+		return 4096;
+	case 0x11:
+		return 8192;
+	default:
+		printf("donot support such density=0x%x device\n", val);
+		return 0;
+		break;
+	}
 }
+#endif
 
 u32 ddr_get_density(void)
 {
 	u32 ddr_size = 0;
-	u32 mr8_cs00, mr8_cs01, mr8_cs10, mr8_cs11;
-	u32 io_width_cs00, io_width_cs01, io_width_cs10, io_width_cs11;
 	u32 cs0_size = 0;
 	u32 cs1_size = 0;
+#ifdef CONFIG_SPL_BUILD
+	u32 mr8_cs00, mr8_cs01, mr8_cs10, mr8_cs11;
+	u32 io_width_cs00, io_width_cs01, io_width_cs10, io_width_cs11;
 
 	mr8_cs00 = mode_register_read(8, 0, 0);
 	mr8_cs01 = mode_register_read(8, 1, 0);
@@ -189,10 +218,15 @@ u32 ddr_get_density(void)
 		cs1_size = mr8_cs10 ? format_size(((mr8_cs10 >> 2) & 0xf), io_width_cs10) : 0;
 		cs1_size += mr8_cs11 ? format_size(((mr8_cs11 >> 2) & 0xf), io_width_cs11) : 0;
 	}
+#else
+	cs0_size = map_format_size(readl((void*)0xc0000000 + 0x200));
+	if (ddr_cs_num > 1) {
+		cs1_size = map_format_size(readl((void*)0xc0000000 + 0x208));
+	}
+#endif
 
 	ddr_size = cs0_size + cs1_size;
 	pr_info("DDR size = %d MB\n", ddr_size);
-
 	return ddr_size;
 }
 

@@ -69,6 +69,30 @@
 	status = "okay";
 };
 
+&i2c6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c6_2>;
+	clock-frequency = <100000>;
+	status = "okay";
+
+	lt8911exb_i2c@29 {
+		compatible = "lontium,lt8911exb";
+		reg = <0x29>;
+		status = "okay";
+
+		enable-gpios = <&gpio 83 0>;
+		bl-gpios = <&gpio 75 0>;
+		standby-gpios = <&gpio 92 0>;
+		reset-gpios = <&gpio 114 0>;
+
+		port {
+			lt8911exb_in: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+};
+
 &pinctrl {
 	pinctrl-single,gpio-range = <
 		&range GPIO_49  2 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_3V_DS4)
@@ -177,6 +201,37 @@
 &hdmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_0>;
+	status = "disabled";
+};
+
+&ldo_27 {
+	regulator-init-microvolt = <1200000>;
+	regulator-boot-on;
+	regulator-state-mem {
+			regulator-off-in-suspend;
+	};
+};
+
+&mipi_dsi {
+	bit-clk = <933000000>;
+	pix-clk = <142000000>;
+	status = "okay";
+
+	ports {
+		mipi_in: port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			dsi_out: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&lt8911exb_in>;
+			};
+		};
+	};
+};
+
+&panel {
+	force-attached = "lt8911ext_edp_1080p";
+	bl-gpios = <&gpio 44 0>;
 	status = "okay";
 };
 

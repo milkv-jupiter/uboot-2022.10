@@ -30,6 +30,7 @@ obj-$(CONFIG_CF_SPI) += cf_spi.o
 obj-$(CONFIG_CORTINA_SFLASH) += ca_sflash.o
 obj-$(CONFIG_DAVINCI_SPI) += davinci_spi.o
 obj-$(CONFIG_K1X_QSPI) += k1x_qspi.o
+obj-$(CONFIG_K1X_SPI) += k1x_spi.o
 obj-$(CONFIG_DESIGNWARE_SPI) += designware_spi.o
 obj-$(CONFIG_EXYNOS_SPI) += exynos_spi.o
 obj-$(CONFIG_FSL_DSPI) += fsl_dspi.o

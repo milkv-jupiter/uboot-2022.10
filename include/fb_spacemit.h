@@ -290,4 +290,22 @@ void clear_storage_data(char *cmd_parameter, char *response);
 int _write_gpt_partition(struct flash_dev *fdev);
 int _write_mtd_partition(struct flash_dev *fdev);
 
+/**
+ * @brief detect blk dev exist or not.
+ *
+ * @param blk_name try to find blk dev.
+ * @param partition try to find partition exist or not.
+* @return int return partition index while finding partition in blk dev.
+*/
+int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, char *partition);
+
+/**
+ * @brief try to find available blk dev while defind multi blks at nor boot.
+ *
+ * @param blk_dev return available blk dev.
+ * @param index return available blk index.
+ * @param return return 0 while detect available blk dev.
+*/
+int get_available_blk_dev(char **blk_dev, int *index);
+
 #endif

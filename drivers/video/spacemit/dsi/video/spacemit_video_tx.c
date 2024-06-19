@@ -89,6 +89,21 @@ void video_tx_esd_check(struct video_tx_device *video_tx)
 	}
 }
 
+void video_tx_reset(struct video_tx_device *video_tx)
+{
+	int ret;
+
+	if (!video_tx->driver->panel_reset) {
+		pr_info("reset() not implemented\n");
+		return;
+	}
+
+	ret = video_tx->driver->panel_reset(video_tx);
+	if(ret) {
+		pr_info("panel reset fail!\n");
+	}
+}
+
 
 /**
  * video_tx_register_device - register a video tx with the framework
@@ -115,7 +130,7 @@ int video_tx_register_device(struct video_tx_device *tx_device)
 	tx_devices[tx_device_num] = tx_device;
 	tx_device_num++;
 
-	pr_info("fb: video_tx (port %d) register device!\n", tx_device->panel_type);
+	pr_debug("fb: video_tx (panel_type %d) register device!\n", tx_device->panel_type);
 	return 0;
 }
 

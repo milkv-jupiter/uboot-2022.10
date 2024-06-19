@@ -15,7 +15,9 @@
 #define SPACEMIT_DSI_NAME "spacemit_dsi"
 #define SPACEMIT_DSI_VERSION	"1.0.0"
 
-#define SPACEMIT_ESC_CLK_DEFAULT 52000000
+#define SPACEMIT_ESC_CLK_DEFAULT	51200000
+#define SPACEMIT_BIT_CLK_DEFAULT	614400000
+
 #define MIPI_CLK_MIN 800000000
 
 #define SPACEMIT_DSI_MAX_TX_FIFO_BYTES	256
@@ -777,6 +779,9 @@ int spacemit_dsi_open(struct spacemit_dsi_device* device_ctx, struct spacemit_mi
 		return -1;
 	}
 
+	device_ctx->bit_clk_rate = mipi_info->phy_bit_clock;
+	device_ctx->esc_clk_rate = mipi_info->phy_esc_clock;
+
 	if(mipi_info->split_enable)
 		lane_number = mipi_info->lane_number >> 1;
 	else
@@ -882,6 +887,7 @@ int spacemit_dsi_probe(void)
 	spacemit_dsi_dev.id = 0;
 
 	spacemit_dsi_dev.esc_clk_rate = SPACEMIT_ESC_CLK_DEFAULT;
+	spacemit_dsi_dev.bit_clk_rate = SPACEMIT_BIT_CLK_DEFAULT;
 
 	ret = spacemit_dsi_register_device(&spacemit_dsi_dev);
 	if(ret != 0){

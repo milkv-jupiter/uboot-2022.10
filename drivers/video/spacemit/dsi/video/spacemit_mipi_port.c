@@ -28,21 +28,6 @@ int lcd_width = 0;
 int lcd_height = 0;
 char *lcd_name = NULL;
 
-//extern unsigned int board_id;
-
-
-static int set_bit_value(int value, int low_bit, int high_bit, int bits_val)
-{
-	int mask;
-
-	mask = (1 << (high_bit - low_bit + 1)) - 1;
-	mask = mask << low_bit;
-	value &= ~mask;
-	value |= (bits_val << low_bit);
-
-	return value;
-}
-
 static bool __maybe_unused lcd_mipi_readid(struct lcd_mipi_tx_data *video_tx_client)
 {
 	struct spacemit_dsi_rx_buf dbuf;
@@ -77,12 +62,14 @@ static bool __maybe_unused lcd_mipi_readid(struct lcd_mipi_tx_data *video_tx_cli
 static int lcd_mipi_reset(struct spacemit_panel_priv *priv)
 {
 	/* reset lcm */
-	dm_gpio_set_value(&priv->reset, 1);
-	mdelay(10);
-	dm_gpio_set_value(&priv->reset, 0);
-	mdelay(10);
-	dm_gpio_set_value(&priv->reset, 1);
-	mdelay(120);
+	if (priv->reset_valid) {
+		dm_gpio_set_value(&priv->reset, 1);
+		mdelay(10);
+		dm_gpio_set_value(&priv->reset, 0);
+		mdelay(10);
+		dm_gpio_set_value(&priv->reset, 1);
+		mdelay(120);
+	}
 
 	return 0;
 }
@@ -90,11 +77,21 @@ static int lcd_mipi_reset(struct spacemit_panel_priv *priv)
 static int lcd_mipi_dc_enable(bool power_on, struct spacemit_panel_priv *priv)
 {
 	if(power_on){
-		dm_gpio_set_value(&priv->dcp, 1);
-		dm_gpio_set_value(&priv->dcn, 1);
+		if (priv->enable_valid)
+			dm_gpio_set_value(&priv->enable, 1);
+
+		if (priv->dcp_valid)
+			dm_gpio_set_value(&priv->dcp, 1);
+		if (priv->dcn_valid)
+			dm_gpio_set_value(&priv->dcn, 1);
 	} else {
-		dm_gpio_set_value(&priv->dcp, 0);
-		dm_gpio_set_value(&priv->dcn, 0);
+		if (priv->enable_valid)
+			dm_gpio_set_value(&priv->enable, 0);
+
+		if (priv->dcp_valid)
+			dm_gpio_set_value(&priv->dcp, 0);
+		if (priv->dcn_valid)
+			dm_gpio_set_value(&priv->dcn, 0);
 	}
 
 	return 0;
@@ -155,16 +152,19 @@ static int lcd_mipi_panel_reset(struct video_tx_device *dev)
 		return -1;
 	}
 
-	ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->init_cmds,
-			video_tx_client->panel_info->init_cmds_num);
-	if(ret) {
-		pr_info("send init cmd fail!\n ");
+	if (video_tx_client->panel_info->panel_type == LCD_MIPI) {
+		ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->init_cmds,
+				video_tx_client->panel_info->init_cmds_num);
+		if(ret) {
+			pr_info("send init cmd fail!\n ");
+		}
+		ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->sleep_out_cmds,
+				video_tx_client->panel_info->sleep_out_cmds_num);
+		if(ret) {
+			pr_info("send sleep out fail!\n ");
+		}
 	}
-	ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->sleep_out_cmds,
-			video_tx_client->panel_info->sleep_out_cmds_num);
-	if(ret) {
-		pr_info("send sleep out fail!\n ");
-	}
+
 	ret = spacemit_mipi_ready_for_datatx(0, video_tx_client->panel_info->mipi_info);
 	if (0 != ret) {
 		pr_info("lcd_mipi spacemit_mipi_ready_for_datatx fail!\n ");
@@ -174,74 +174,6 @@ static int lcd_mipi_panel_reset(struct video_tx_device *dev)
 	return 0;
 }
 
-void dpc_update_clocks(struct lcd_mipi_panel_info *panel_info)
-{
-	unsigned int value = 0;
-	unsigned int freq_sel = 0;
-	unsigned int freq_div = 0;
-	unsigned int timeout = 50;
-
-	/* bitclk */
-
-	freq_sel = panel_info->bitclk_sel;
-	freq_div = panel_info->bitclk_div;
-	value = readl((void *)(uintptr_t)0xd4282844);
-	value = set_bit_value(value, 20, 21, freq_sel);
-	value = set_bit_value(value, 17, 19, freq_div);
-	writel(value, (void *)(uintptr_t)0xd4282844);
-	value |= BIT(31);
-	writel(value, (void *)(uintptr_t)0xd4282844);
-
-	/* wait freq change successful */
-	while (true) {
-		value = readl((void *)(uintptr_t)0xd4282844);
-
-		if ((value & BIT(31)) == 0)
-			break;
-
-		if (timeout == 0) {
-			pr_info("failed to change dpu bitclk frequency\n");
-			break;
-		}
-
-		timeout--;
-
-		udelay(10);
-	}
-
-	/* pxclk */
-	timeout = 50;
-	freq_sel = panel_info->pxclk_sel;
-	freq_div = panel_info->pxclk_div;
-	value = readl((void *)(uintptr_t)0xd428284c);
-	value = set_bit_value(value, 21, 23, freq_sel);
-	value = set_bit_value(value, 17, 20, freq_div);
-	writel(value, (void *)(uintptr_t)0xd428284c);
-
-	value = readl((void *)(uintptr_t)0xd4282844);
-	value |= BIT(30);
-	writel(value,(void *)(uintptr_t) 0xd4282844);
-
-	/* wait freq change successful */
-	while (true) {
-		value = readl((void *)(uintptr_t)0xd4282844);
-
-		if ((value & BIT(30)) == 0)
-			break;
-
-		if (timeout == 0) {
-			pr_info("failed to change dpu pxclk frequency\n");
-			break;
-		}
-
-		timeout--;
-
-		udelay(10);
-	}
-
-	pr_debug("dpu clk1 = 0x%x\n", readl((void *)(uintptr_t)0xd4282844));
-	pr_debug("dpu clk2 = 0x%x\n", readl((void *)(uintptr_t)0xd428284c));
-}
 static int lcd_mipi_identify(struct video_tx_device *dev)
 {
 	struct lcd_mipi_tx_data  *video_tx_client =
@@ -249,7 +181,7 @@ static int lcd_mipi_identify(struct video_tx_device *dev)
 	struct lcd_mipi_panel_info *panel_info = NULL;
 	bool is_panel = false;
 	int ret = 0;
-	int i, num;
+	int i;
 
 	ret = lcd_mipi_dc_enable(true, video_tx_client->priv);
 	if (ret) {
@@ -261,13 +193,15 @@ static int lcd_mipi_identify(struct video_tx_device *dev)
 		if(!panel_info)
 			continue;
 
-		dpc_update_clocks(panel_info);
-
-		pr_debug("now check lcd (%s)\n",panel_info->lcd_name);
+		pr_debug("identify lcd (%s)\n",panel_info->lcd_name);
 
 		video_tx_client->panel_info = panel_info;
 
-		for (num = 0; num < 1; num++) {
+		if (panel_info->panel_type == LCD_EDP) {
+
+			is_panel = true;
+		} else {
+
 			ret = lcd_mipi_reset(video_tx_client->priv);
 			if (ret) {
 				pr_info("lcd_mipi gpio reset failded!\n");
@@ -283,9 +217,6 @@ static int lcd_mipi_identify(struct video_tx_device *dev)
 			is_panel = lcd_mipi_readid(video_tx_client);
 
 			spacemit_mipi_close(0);
-
-			if (is_panel)
-				break;
 		}
 
 		if (!is_panel) {
@@ -319,8 +250,11 @@ static int lcd_mipi_init(struct video_tx_device *dev)
 		return -1;
 	}
 
-	ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->init_cmds,
-			video_tx_client->panel_info->init_cmds_num);
+	if (video_tx_client->panel_info->panel_type == LCD_MIPI) {
+
+		ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->init_cmds,
+				video_tx_client->panel_info->init_cmds_num);
+	}
 
 	return ret;
 }
@@ -345,8 +279,11 @@ static int lcd_mipi_sleep_out(struct video_tx_device *dev)
 		return -1;
 	}
 
-	ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->sleep_out_cmds,
-			video_tx_client->panel_info->sleep_out_cmds_num);
+	if (video_tx_client->panel_info->panel_type == LCD_MIPI) {
+
+		ret = spacemit_mipi_write_cmds(0, video_tx_client->panel_info->sleep_out_cmds,
+				video_tx_client->panel_info->sleep_out_cmds_num);
+	}
 
 	ret = spacemit_mipi_ready_for_datatx(0, video_tx_client->panel_info->mipi_info);
 	if(0 != ret) {
@@ -406,10 +343,13 @@ static int lcd_bl_enable(struct video_tx_device *dev, bool enable)
 				video_tx_get_drvdata(dev);
 	struct spacemit_panel_priv *priv = video_tx_client->priv;
 
-	if (enable)
-		dm_gpio_set_value(&priv->bl, 1);
-	else
-		dm_gpio_set_value(&priv->bl, 0);
+	if (priv->bl_valid) {
+
+		if (enable)
+			dm_gpio_set_value(&priv->bl, 1);
+		else
+			dm_gpio_set_value(&priv->bl, 0);
+	}
 
 	return 0;
 }
@@ -484,9 +424,14 @@ int lcd_mipi_probe(void)
 		return ret;
 	}
 
-	lcd_icnl9911c_init();
-	lcd_gx09inx101_init();
-
+	if (strcmp("lt8911ext_edp_1080p", priv->panel_name) == 0) {
+		tx_device_client.panel_type = LCD_EDP;
+		tx_device.panel_type = tx_device_client.panel_type;
+		lcd_lt8911ext_edp_1080p_init();
+	} else {
+		// lcd_icnl9911c_init();
+		lcd_gx09inx101_init();
+	}
 
 	return 0;
 }
@@ -500,34 +445,65 @@ static int spacemit_panel_of_to_plat(struct udevice *dev)
 {
 
 	struct spacemit_panel_priv *priv = dev_get_priv(dev);
+	const char *name;
 	int ret;
+
+	memset(priv, 0, sizeof(*priv));
+
+	name = dev_read_string(dev, "force-attached");
+	if (name) {
+		strcpy(priv->panel_name, name);
+		pr_info("spacemit_panel_of_to_plat panel %s \n", priv->panel_name);
+	}
 
 	ret = gpio_request_by_name(dev, "dcp-gpios", 0, &priv->dcp,
 				   GPIOD_IS_OUT);
 	if (ret) {
-		pr_info("%s: Warning: cannot get dcp GPIO: ret=%d\n",
+		pr_debug("%s: Warning: cannot get dcp GPIO: ret=%d\n",
 		      __func__, ret);
+		priv->dcp_valid = false;
+	} else {
+		priv->dcp_valid = true;
 	}
 
 	ret = gpio_request_by_name(dev, "dcn-gpios", 0, &priv->dcn,
 				   GPIOD_IS_OUT);
 	if (ret) {
-		pr_info("%s: Warning: cannot get dcn GPIO: ret=%d\n",
+		pr_debug("%s: Warning: cannot get dcn GPIO: ret=%d\n",
 		      __func__, ret);
+		priv->dcn_valid = false;
+	} else {
+		priv->dcn_valid = true;
 	}
 
 	ret = gpio_request_by_name(dev, "bl-gpios", 0, &priv->bl,
 				   GPIOD_IS_OUT);
 	if (ret) {
-		pr_info("%s: Warning: cannot get bl GPIO: ret=%d\n",
+		pr_debug("%s: Warning: cannot get bl GPIO: ret=%d\n",
 		      __func__, ret);
+		priv->bl_valid = false;
+	} else {
+		priv->bl_valid = true;
+	}
+
+	ret = gpio_request_by_name(dev, "enable-gpios", 0, &priv->enable,
+				   GPIOD_IS_OUT);
+	if (ret) {
+		pr_debug("%s: Warning: cannot get enable GPIO: ret=%d\n",
+		      __func__, ret);
+		priv->enable_valid = false;
+	} else {
+		priv->enable_valid = true;
 	}
 
 	ret = gpio_request_by_name(dev, "reset-gpios", 0, &priv->reset,
 				   GPIOD_IS_OUT);
 	if (ret) {
-		pr_info("%s: Warning: cannot get reset GPIO: ret=%d\n",
+		pr_debug("%s: Warning: cannot get reset GPIO: ret=%d\n",
 		      __func__, ret);
+		priv->reset_valid = false;
+	} else {
+		priv->reset_valid = true;
 	}
 
 	return 0;

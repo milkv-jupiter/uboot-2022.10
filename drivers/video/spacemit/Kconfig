@@ -43,4 +43,11 @@ config DISPLAY_SPACEMIT_MIPI
 	  This enables Mobile Industry Processor Interface(MIPI) display
 	  support.
 
+config DISPLAY_SPACEMIT_EDP
+	bool "EDP Port"
+	depends on DISPLAY_SPACEMIT_MIPI
+	help
+	  This enables Mobile Industry Processor Interface(EDP) display
+	  support.
+
 endif

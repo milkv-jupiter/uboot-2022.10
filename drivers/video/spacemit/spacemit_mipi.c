@@ -109,6 +109,9 @@ static int spacemit_mipi_dsi_probe(struct udevice *dev)
 	struct power_domain pm_domain;
 	unsigned long rate;
 	int ret;
+	u32 bit_clk, pix_clk;
+
+	pr_debug("%s: device %s \n", __func__, dev->name);
 
 	ret = power_domain_get(dev, &pm_domain);
 	if (ret) {
@@ -224,7 +227,9 @@ static int spacemit_mipi_dsi_probe(struct udevice *dev)
 		return ret;
 	}
 
-	ret = clk_set_rate(&priv->pxclk, 88000000);
+	pix_clk = dev_read_u32_default(dev, "pix-clk", 88000000);
+	ret = clk_set_rate(&priv->pxclk, pix_clk);
+
 	if (ret < 0) {
 		pr_err("clk_set_rate mipi dsi pxclk failed: %d\n", ret);
 		return ret;
@@ -242,7 +247,8 @@ static int spacemit_mipi_dsi_probe(struct udevice *dev)
 		return ret;
 	}
 
-	ret = clk_set_rate(&priv->bitclk, 614400000);
+	bit_clk = dev_read_u32_default(dev, "bit-clk", 614400000);
+	ret = clk_set_rate(&priv->bitclk, bit_clk);
 	if (ret < 0) {
 		pr_err("clk_set_rate mipi dsi bitclk failed: %d\n", ret);
 		return ret;

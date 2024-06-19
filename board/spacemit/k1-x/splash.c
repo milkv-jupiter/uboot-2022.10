@@ -52,42 +52,27 @@ int set_mmc_splash_location(struct splash_location *locations) {
 }
 
 int set_nor_splash_location(struct splash_location *locations) {
-	struct blk_desc *dev_desc;
-	struct disk_partition info;
-	int err;
-	u32 part;
+	int part, blk_index;
+	char *blk_name;
 	char devpart_str[16];
 
-	if (run_command("nvme scan", 0)) {
-		pr_err("Cannot scan NVMe devices!\n");
+	if (get_available_blk_dev(&blk_name, &blk_index)){
+		printf("can not get available blk dev\n");
 		return -1;
 	}
-
-	dev_desc = blk_get_dev("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX);
-	if (!dev_desc) {
-		pr_err("Cannot find NVMe device\n");
+	part = detect_blk_dev_or_partition_exist(blk_name, blk_index, BOOTFS_NAME);
+	if (part < 0)
 		return -1;
-	}
 
-	for (part = 1; part <= MAX_SEARCH_PARTITIONS; part++) {
-		err = part_get_info(dev_desc, part, &info);
-		if (err) {
-			continue;
-		}
+	snprintf(devpart_str, sizeof(devpart_str), "%d:%d", blk_index, part);
 
-		if (!strcmp(BOOTFS_NAME, info.name)) {
-			break;
-		}
-	}
-
-	if (part > MAX_SEARCH_PARTITIONS) {
-		pr_err("Failed to find bootfs on NOR\n");
+	if (!strcmp("mmc", blk_name))
+		locations[0].name = "emmc_fs";
+	else if (!strcmp("nvme", blk_name))
+		locations[0].name = "nvme_fs";
+	else
 		return -1;
-	}
 
-	snprintf(devpart_str, sizeof(devpart_str), "%d:%d", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX, part);
-
-	locations[0].name = "nvme_fs";
 	locations[0].storage = SPLASH_STORAGE_NVME;
 	locations[0].flags = SPLASH_STORAGE_FS;
 	locations[0].devpart = strdup(devpart_str);
@@ -157,7 +142,20 @@ int splash_screen_prepare(void)
 		env_set("splashsource", "nand_fs");
 		break;
 	case BOOT_MODE_NOR:
-		env_set("splashsource", "nvme_fs");
+		int blk_index;
+		char *blk_name;
+
+		if (get_available_blk_dev(&blk_name, &blk_index)){
+			printf("can not get available blk dev\n");
+			return -1;
+		}
+
+		if (!strcmp("mmc", blk_name))
+			env_set("splashsource", "emmc_fs");
+		else if (!strcmp("nvme", blk_name))
+			env_set("splashsource", "nvme_fs");
+		else
+			printf("not defind blk dev while prepare for splash screen\n");
 		break;
 	case BOOT_MODE_SHELL:
 	case BOOT_MODE_USB:

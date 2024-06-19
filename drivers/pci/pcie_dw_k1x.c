@@ -298,7 +298,6 @@ void porta_rterm(struct pcie_dw_k1x *k1x)
 	u32 val;
 
 	//REG32(PMUA_REG_BASE + 0x3CC) = 0x4000003f;
-	val = k1x_pcie_conf0_reg_readl(k1x, 0);
 	val = 0x4000003f;
 	k1x_pcie_conf0_reg_writel(k1x, 0 , val);
 
@@ -391,12 +390,10 @@ void porta_rterm(struct pcie_dw_k1x *k1x)
 	k1x_pcie_phy0_reg_writel(k1x, (0x12 << 2), val);
 
 	//REG32(0xC0B10000 + (0x02 << 2)) = 0x00000B78; // PU_ADDR_CLK_CFG of lane0
-	val = k1x_pcie_phy0_reg_readl(k1x, (0x02 << 2));
 	val = 0x00000B78;
 	k1x_pcie_phy0_reg_writel(k1x, (0x02 << 2), val);
 
 	//REG32(0xC0B10000 + (0x06 << 2)) = 0x00000400; // force rcv done
-	val = k1x_pcie_phy0_reg_readl(k1x, (0x06 << 2));
 	val = 0x00000400;
 	k1x_pcie_phy0_reg_writel(k1x, (0x06 << 2), val);
 	printk("Now waiting portA resister tuning done...\n");
@@ -608,24 +605,16 @@ static int init_phy(struct pcie_dw_k1x *k1x)
 	k1x_pcie_phy_reg_writel(k1x, (0x12 << 2), val);
 
 	// PU_ADDR_CLK_CFG of lane0
-	val = k1x_pcie_phy_reg_readl(k1x, (0x02 << 2));
 	val = 0x00000B78;
 	k1x_pcie_phy_reg_writel(k1x, (0x02 << 2), val);
 
 	 // PU_ADDR_CLK_CFG of lane1
-	val = k1x_pcie_phy_reg_readl(k1x, 0x400 + (0x02 << 2));
 	val = 0x00000B78;
 	k1x_pcie_phy_reg_writel(k1x, 0x400 + (0x02 << 2), val);
 
 	// force rcv done
-	val = k1x_pcie_phy_reg_readl(k1x, (0x06 << 2));
 	val = 0x00000400;
 	k1x_pcie_phy_reg_writel(k1x, (0x06 << 2), val);
-
-	// force rcv done
-	val = k1x_pcie_phy_reg_readl(k1x, 0x400 + (0x06 << 2));
-	val = 0x00000400;
-	k1x_pcie_phy_reg_writel(k1x, 0x400 + (0x06 << 2), val);
 
 	// waiting pll lock
 	printk("waiting pll lock...\n");

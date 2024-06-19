@@ -26,6 +26,8 @@ enum {
 enum panel_type {
 	LCD_MIPI = 0,
 	LCD_HDMI = 1,
+	LCD_EDP = 2,
+	LCD_DP = 3,
 	LCD_NULL
 };
 
@@ -144,6 +146,7 @@ struct lcd_mipi_tx_data {
 };
 
 struct spacemit_panel_priv {
+	char panel_name[128];
 	struct gpio_desc ldo_1v2_gpio;
 	unsigned int ldo_1v8;
 	unsigned int ldo_2v8;
@@ -155,7 +158,11 @@ struct spacemit_panel_priv {
 	struct gpio_desc bl;
 	struct gpio_desc enable;
 	struct gpio_desc reset;
-
+	bool dcp_valid;
+	bool dcn_valid;
+	bool bl_valid;
+	bool enable_valid;
+	bool reset_valid;
 };
 extern int lcd_id;
 extern int lcd_width;
@@ -168,6 +175,7 @@ int video_tx_get_modes(struct video_tx_device *video_tx,
 		       struct spacemit_mode_modeinfo *modelist);
 int video_tx_dpms(struct video_tx_device *video_tx, int mode);
 void video_tx_esd_check(struct video_tx_device *video_tx);
+void video_tx_reset(struct video_tx_device *video_tx);
 
 /* Client functions */
 int video_tx_register_device(struct video_tx_device *tx_device);

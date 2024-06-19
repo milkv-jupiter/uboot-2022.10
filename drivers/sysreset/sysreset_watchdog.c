@@ -43,8 +43,7 @@ static int wdt_reboot_of_to_plat(struct udevice *dev)
 	struct wdt_reboot_plat *plat = dev_get_plat(dev);
 	int err;
 
-	err = uclass_get_device_by_phandle(UCLASS_WDT, dev,
-					   "wdt", &plat->wdt);
+	err = uclass_get_device(UCLASS_WDT, 0, &plat->wdt);
 	if (err) {
 		pr_err("unable to find wdt device\n");
 		return err;

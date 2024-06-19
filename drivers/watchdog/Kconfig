@@ -98,6 +98,12 @@ config WDT_SPACEMIT
 	  The watchdog will perform a full SoC reset resulting in a
 	  reboot of the entire system.
 
+config WDT_PMIC_SPACEMIT
+	bool "SPACEMIT pmic watchdog timer support"
+	depends on WDT
+	help
+	  Enable support for the watchdog timer on pmic SoC.
+
 config WDT_ARMADA_37XX
 	bool "Marvell Armada 37xx watchdog timer support"
 	depends on WDT && ARMADA_3700

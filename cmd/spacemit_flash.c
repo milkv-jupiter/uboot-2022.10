@@ -855,17 +855,18 @@ static int load_recovery_file(struct cmd_tbl *cmdtp, struct flash_dev *fdev,
 
 static int perform_flash_operations(struct cmd_tbl *cmdtp, struct flash_dev *fdev)
 {
+	char *blk_dev;
+	int blk_index;
+
 	u32 boot_mode = get_boot_pin_select();
 	switch(boot_mode){
-#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
 	case BOOT_MODE_NOR:
-		/*nvme devices need scan at first*/
-		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)){
-			run_command("nvme scan", 0);
+		if (get_available_blk_dev(&blk_dev, &blk_index)){
+			printf("can not get availabel blk dev\n");
+			return -1;
 		}
 
-		fdev->dev_desc = blk_get_dev(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME,
-							 CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX);
+		fdev->dev_desc = blk_get_dev(blk_dev, blk_index);
 		if (!fdev->dev_desc || fdev->dev_desc->type == DEV_TYPE_UNKNOWN) {
 			printf("get blk faild\n");
 			return -1;
@@ -874,17 +875,12 @@ static int perform_flash_operations(struct cmd_tbl *cmdtp, struct flash_dev *fde
 		if (flash_image(cmdtp, fdev)) {
 			return RESULT_FAIL;
 		}
-
 		break;
-#endif //CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
-
 	case BOOT_MODE_NAND:
 		if (flash_image(cmdtp, fdev)) {
 			return RESULT_FAIL;
 		}
-
 		break;
-
 	case BOOT_MODE_EMMC:
 	case BOOT_MODE_SD:
 #ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
@@ -951,26 +947,21 @@ void get_mtd_partition_file(struct flash_dev *fdev)
 void get_blk_partition_file(char *file_name)
 {
 	struct blk_desc *dev_desc = NULL;
-	const char *blk_name;
+	char *blk_name;
 	int blk_index;
 
 	u32 boot_mode = get_boot_pin_select();
 	switch(boot_mode){
-#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
 	case BOOT_MODE_NOR:
-		blk_name = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME;
-		blk_index = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX;
-
-		/*nvme devices need scan at first*/
-		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)){
-			run_command("nvme scan", 0);
+		if (get_available_blk_dev(&blk_name, &blk_index)){
+			printf("can not get availabel blk dev\n");
+			return;
 		}
 
 		dev_desc = blk_get_devnum_by_typename(blk_name, blk_index);
 		if (dev_desc != NULL)
 			strcpy(file_name, FLASH_CONFIG_FILE_NAME);
 		return;
-#endif //CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
 	case BOOT_MODE_NAND:
 		return;
 	case BOOT_MODE_EMMC:

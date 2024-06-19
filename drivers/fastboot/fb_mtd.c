@@ -24,8 +24,6 @@ struct fb_mtd_sparse {
 	struct part_info	*part;
 };
 
-static bool unlock_flag = false;
-
 static bool mtd_is_aligned_with_min_io_size(struct mtd_info *mtd, u64 size)
 {
 	return !do_div(size, mtd->writesize);
@@ -364,6 +362,14 @@ void fastboot_mtd_flash_write(const char *cmd, void *download_buffer,
 						response, fdev);
 		return;
 	}
+
+	/*flash env*/
+	/*if (strcmp(cmd, "env") == 0) {*/
+	/*	printf("flash env \n");*/
+	/*	fastboot_oem_flash_env(cmd, fastboot_buf_addr, download_bytes,*/
+	/*							response, fdev);*/
+	/*	return;*/
+	/*}*/
 #endif
 
 	ret = fb_mtd_lookup(cmd, &mtd, &part);
@@ -372,12 +378,6 @@ void fastboot_mtd_flash_write(const char *cmd, void *download_buffer,
 		pr_err("invalid mtd device \n");
 		fastboot_fail("invalid mtd device or partition", response);
 		return;
-	}
-
-	/*unlock nor flash protect*/
-	if (!unlock_flag && mtd->type == MTD_NORFLASH){
-		run_commandf("sf probe;sf protect unlock 0 0x%x", mtd->size);
-		unlock_flag = true;
 	}
 
 	if (need_erase) {
@@ -490,12 +490,6 @@ void fastboot_mtd_flash_erase(const char *cmd, char *response)
 		printf("invalid mtd device\n");
 		fastboot_fail("invalid mtd device or partition", response);
 		return;
-	}
-
-	/*unlock nor flash protect*/
-	if (!unlock_flag && mtd->type == MTD_NORFLASH){
-		run_commandf("sf probe;sf protect unlock 0 0x%x", mtd->size);
-		unlock_flag = true;
 	}
 
 	ret = _fb_mtd_erase(mtd, 0);

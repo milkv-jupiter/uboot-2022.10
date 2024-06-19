@@ -178,6 +178,9 @@ static void dsi_dpu_init(struct spacemit_mode_modeinfo *spacemit_mode, ulong fbb
 	vsp = spacemit_mode->hsync_invert ? 0 : 1;
 	hsp = spacemit_mode->hsync_invert ? 0 : 1;
 
+	pr_debug("dsi_dpu_init hbp %d, hfp %d hsync %d vsp %d \n", hbp, hfp, hsync, vsp);
+	pr_debug("dsi_dpu_init vbp %d, vfp %d vsync %d hsp %d \n", vbp, vfp, vsync, hsp);
+
 	dsi_dpu_write((void __iomem *)0xa1c, 0x2223);
 	dsi_dpu_write((void __iomem *)0x18000, (spacemit_mode->yres << 16) | spacemit_mode->xres);
 	dsi_dpu_write((void __iomem *)0x18018, 0x20);
@@ -228,7 +231,7 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 	ofnode remote;
 	const char *compat;
 	struct display_plat *disp_uc_plat;
-	// struct udevice *panel = NULL;
+	struct udevice *panel = NULL;
 
 	struct spacemit_mode_modeinfo *spacemit_mode = NULL;
 
@@ -353,10 +356,42 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 		uc_priv->xsize = spacemit_mode->xres;
 		uc_priv->ysize = spacemit_mode->yres;
 
-		dsi_dpu_init(spacemit_mode, fbbase);
-		video_tx_esd_check(fbi.tx);
-		video_tx = fbi.tx;
-		video_tx->driver->bl_enable(video_tx, true);
+		pr_info("%s: panel type %d\n", __func__, fbi.tx->panel_type);
+
+		if (fbi.tx->panel_type == LCD_MIPI) {
+			dsi_dpu_init(spacemit_mode, fbbase);
+			video_tx_esd_check(fbi.tx);
+			video_tx = fbi.tx;
+			video_tx->driver->bl_enable(video_tx, true);
+
+		} else if (fbi.tx->panel_type == LCD_EDP){
+			dsi_dpu_init(spacemit_mode, fbbase);
+			video_tx_reset(fbi.tx);
+			video_tx = fbi.tx;
+
+			ret = uclass_first_device_err(UCLASS_PANEL, &panel);
+			if (ret) {
+				if (ret != -ENODEV)
+					pr_info("panel device error %d\n", ret);
+
+				return ret;
+			}
+
+			ret = panel_get_display_timing(panel, &timing);
+			if (ret) {
+				pr_info("%s: timing error: %d\n", __func__, ret);
+			}
+
+			ret = panel_enable_backlight(panel);
+			if (ret) {
+				pr_info("%s: backlight error: %d\n", __func__, ret);
+				return ret;
+			}
+
+			video_tx->driver->bl_enable(video_tx, true);
+		} else {
+			pr_info("%s: Failed to find panel\n", __func__);
+		}
 
 		pr_info("fb=%lx, size=%d %d\n", fbbase, uc_priv->xsize, uc_priv->ysize);
 
@@ -370,7 +405,7 @@ static int spacemit_dpu_probe(struct udevice *dev)
 {
 	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct spacemit_dpu_priv *priv = dev_get_priv(dev);
-	struct udevice *udev;
+	// struct udevice *udev;
 	ofnode port, node;
 	int ret;
 
@@ -389,6 +424,7 @@ static int spacemit_dpu_probe(struct udevice *dev)
 		return -EINVAL;
 	}
 
+	/*
 	for (uclass_find_first_device(UCLASS_VIDEO, &udev);
 		udev;
 		uclass_find_next_device(&udev)) {
@@ -408,6 +444,14 @@ static int spacemit_dpu_probe(struct udevice *dev)
 
 		pr_info("%s:bridge device %s\n", __func__, udev->name);
 	}
+
+	for (uclass_find_first_device(UCLASS_PANEL, &udev);
+		udev;
+		uclass_find_next_device(&udev)) {
+
+		pr_info("%s:panel device %s\n", __func__, udev->name);
+	}
+	*/
 
 	for (node = ofnode_first_subnode(port);
 		ofnode_valid(node);

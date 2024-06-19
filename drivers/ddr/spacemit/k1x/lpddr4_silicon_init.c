@@ -526,8 +526,10 @@ void init_table_mc_a0(uint32_t ddrc_base)
 	REG32(ddrc_base + mc_cfg2_addr) = mc_cfg2_org;
 }
 
-void ddr_dfc_table_init(unsigned int DDRC_BASE)
+void ddr_dfc_table_init(unsigned int DDRC_BASE, unsigned int ddr_size_mb)
 {
+	unsigned int idx;
+
 	REG32(DDRC_BASE + 0x74) = 0x00040303;
 	REG32(DDRC_BASE + 0x78) = 0x00000044;
 	REG32(DDRC_BASE + 0x70) = 0x00000000;
@@ -603,18 +605,25 @@ void ddr_dfc_table_init(unsigned int DDRC_BASE)
 	REG32(DDRC_BASE + 0x74) = 0x1302000d;
 	REG32(DDRC_BASE + 0x78) = 0x00000024;
 	REG32(DDRC_BASE + 0x70) = 0x00000018;
+	idx = 0x00000019;
+	if (16384 == ddr_size_mb) {
+		REG32(DDRC_BASE + 0x74) = 0x13020095;
+		REG32(DDRC_BASE + 0x78) = 0x00000024;
+		REG32(DDRC_BASE + 0x70) = idx++;
+	}
 	REG32(DDRC_BASE + 0x74) = 0x00000002;
 	REG32(DDRC_BASE + 0x78) = 0x00002008;
-	REG32(DDRC_BASE + 0x70) = 0x00000019;
+	REG32(DDRC_BASE + 0x70) = idx++;
 	REG32(DDRC_BASE + 0x74) = 0x00000000;
 	REG32(DDRC_BASE + 0x78) = 0x00002008;
-	REG32(DDRC_BASE + 0x70) = 0x0000001a;
+	REG32(DDRC_BASE + 0x70) = idx++;
 	REG32(DDRC_BASE + 0x74) = 0x00040380;
 	REG32(DDRC_BASE + 0x78) = 0x00020044;
-	REG32(DDRC_BASE + 0x70) = 0x0000001b;
+	REG32(DDRC_BASE + 0x70) = idx;
 	REG32(DDRC_BASE + 0x74) = 0x00040380;
 	REG32(DDRC_BASE + 0x78) = 0x00020044;
 	REG32(DDRC_BASE + 0x70) = 0x0000012e;
+
 	REG32(DDRC_BASE + 0x74) = 0x00040b43;
 	REG32(DDRC_BASE + 0x78) = 0x00000044;
 	REG32(DDRC_BASE + 0x70) = 0x00000180;
@@ -651,15 +660,21 @@ void ddr_dfc_table_init(unsigned int DDRC_BASE)
 	REG32(DDRC_BASE + 0x74) = 0x1302000d;
 	REG32(DDRC_BASE + 0x78) = 0x00000024;
 	REG32(DDRC_BASE + 0x70) = 0x0000018b;
+	idx = 0x0000018c;
+	if (16384 == ddr_size_mb) {
+		REG32(DDRC_BASE + 0x74) = 0x13020095;
+		REG32(DDRC_BASE + 0x78) = 0x00000024;
+		REG32(DDRC_BASE + 0x70) = idx++;
+	}
 	REG32(DDRC_BASE + 0x74) = 0x00000002;
 	REG32(DDRC_BASE + 0x78) = 0x00002008;
-	REG32(DDRC_BASE + 0x70) = 0x0000018c;
+	REG32(DDRC_BASE + 0x70) = idx++;
 	REG32(DDRC_BASE + 0x74) = 0x00000000;
 	REG32(DDRC_BASE + 0x78) = 0x00002008;
-	REG32(DDRC_BASE + 0x70) = 0x0000018d;
+	REG32(DDRC_BASE + 0x70) = idx++;
 	REG32(DDRC_BASE + 0x74) = 0x00040b00;
 	REG32(DDRC_BASE + 0x78) = 0x00020044;
-	REG32(DDRC_BASE + 0x70) = 0x0000018e;
+	REG32(DDRC_BASE + 0x70) = idx;
 }
 
 void top_DDR_MC_init(unsigned DDRC_BASE, unsigned int fp)
@@ -1048,7 +1063,7 @@ void lpddr4_silicon_init(u32 ddr_base, u32 data_rate)
 	adjust_mapping(ddr_base, cs_num, size_mb, mr8_value);
 	LogMsg(0,"ddr density: %u MB \n", size_mb);
 
-	ddr_dfc_table_init(0xF0000000);
+	ddr_dfc_table_init(0xF0000000, size_mb);
 	init_table_mc_a0(0xF0000000);
 
 	top_training_fp_all(ddr_base, cs_num, 0, info->para);
@@ -1060,6 +1075,8 @@ void lpddr4_silicon_init(u32 ddr_base, u32 data_rate)
 	fp=2;
 	ddr_dfc(fp);
 	top_training_fp_all(ddr_base, cs_num, fp, info->para);
+	if (16384 == size_mb)
+		REG32(ddr_base + 0x24) = (0x10020095 | (3 << 24)); //bit7 MR21 RFU
 
 	/* change dram frequency */
 	switch(data_rate) {

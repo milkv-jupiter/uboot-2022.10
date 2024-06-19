@@ -12,6 +12,10 @@ config SYS_CPU
 config SYS_CONFIG_NAME
 	default "k1-x"
 
+config K1_X_BOARD_DEFAULT_SN
+	string "k1-x board default serial number"
+	default "0000000000000000"
+
 config SYS_TEXT_BASE
 	default 0x81200000 if SPL
 	default 0x80000000 if !RISCV_SMODE
@@ -95,6 +99,7 @@ config K1_X_BOARD_SIMULATION
 	bool "k1-x board simulation"
 	help
 	  k1-x board is simulation.
+
 endchoice
 
 endif

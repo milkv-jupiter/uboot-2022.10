@@ -74,19 +74,18 @@ int _write_gpt_partition(struct flash_dev *fdev)
 #if CONFIG_IS_ENABLED(FASTBOOT_SUPPORT_BLOCK_DEV)
 	case BOOT_MODE_NOR:
 	case BOOT_MODE_NAND:
-		pr_info("write gpt to dev:%s\n", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME);
+		char *blk_name;
+		int blk_index;
 
-		/*nvme need scan at first*/
-		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)
-						&& nvme_scan_namespace()){
-			pr_err("can not can nvme devices!");
+		if (get_available_blk_dev(&blk_name, &blk_index)){
 			ret = -1;
 			goto err;
 		}
 
+		pr_info("write gpt to dev:%s\n", blk_name);
+
 		sprintf(gpt_table_str, "gpt write %s %x '%s'",
-			CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX,
-			fdev->gptinfo.gpt_table);
+			blk_name, blk_index, fdev->gptinfo.gpt_table);
 		if (run_command(gpt_table_str, 0)){
 			pr_err("write gpt fail");
 			ret = -1;
@@ -876,8 +875,8 @@ struct oem_config_info
 	char* (*convert)(char *);
 };
 const struct oem_config_info config_info[] = {
-	{ "product_name", TLV_CODE_PRODUCT_NAME, 16, NULL },
-	{ "serial#", TLV_CODE_SERIAL_NUMBER, 12, NULL },
+	{ "product_name", TLV_CODE_PRODUCT_NAME, 32, NULL },
+	{ "serial#", TLV_CODE_SERIAL_NUMBER, 32, NULL },
 	{ "ethaddr", TLV_CODE_MAC_BASE, 17, NULL },
 	{ "ethsize", TLV_CODE_MAC_SIZE, 6, NULL },/*size must equal or less than 65535*/
 	{ "manufacture_date", TLV_CODE_MANUF_DATE, 19, NULL },
@@ -1010,11 +1009,14 @@ static void write_oem_configuration(char *config, char *response)
 		}
 	}
 
-	if (ret){
-		fastboot_fail("write key fail", response);
-		return;
-	}
+	if (0 == ret)
+		fastboot_okay(NULL, response);
+	else
+		fastboot_fail("NOT exist", response);
+}
 
+static void flush_oem_configuration(char *config, char *response)
+{
 #if defined(CONFIG_SPL_BUILD)
 	if (0 == write_tlvinfo_to_eeprom())
 #else
@@ -1045,6 +1047,8 @@ void fastboot_config_access(char *operation, char *config, char *response)
 		read_oem_configuration(config, response);
 	else if (0 == strcmp(operation, "write"))
 		write_oem_configuration(config, response);
+	else if (0 == strcmp(operation, "flush"))
+		flush_oem_configuration(config, response);
 	else
 		fastboot_fail("NOT support", response);
 }
@@ -1308,3 +1312,91 @@ void clear_storage_data(char *cmd_parameter, char *response)
 }
 
 #endif /*CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_ERASE)*/
+
+/**
+ * @brief detect blk dev exist or not.
+ *
+ * @param blk_name try to find blk dev.
+ * @param partition try to find partition exist or not.
+ * @return int return partition index while finding partition in blk dev.
+*/
+int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, char *partition)
+{
+	struct blk_desc *dev_desc;
+	struct disk_partition info;
+	u32 part;
+	int err;
+
+	dev_desc = blk_get_dev(blk_name, blk_index);
+	if (!dev_desc) {
+		pr_info("Cannot find blk device\n");
+		return -1;
+	}
+
+	if (partition != NULL) {
+		for (part = 1; part <= MAX_SEARCH_PARTITIONS; part++) {
+			err = part_get_info(dev_desc, part, &info);
+			if (err) {
+				continue;
+			}
+
+			if (!strcmp(partition, info.name)) {
+				return part;
+			}
+		}
+
+		if (part > MAX_SEARCH_PARTITIONS) {
+			pr_info("can not find partition in blk dev\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * @brief try to find available blk dev while defind multi blks at nor boot.
+ *
+ * @param blk_dev return available blk dev.
+ * @param index return available blk index.
+ * @param return return 0 while detect available blk dev.
+*/
+int get_available_blk_dev(char **blk_dev, int *index)
+{
+#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
+	static bool scan_nvme = false;
+	/*nvme devices need scan at first*/
+	if (!scan_nvme){
+		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)
+#ifdef CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME
+			|| !strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME, 4)
+#endif
+		){
+			run_command("nvme scan", 0);
+			scan_nvme = true;
+		}
+	}
+#endif
+
+#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
+	if (strlen(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME) > 0){
+		*blk_dev = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME;
+		*index = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX;
+		if (detect_blk_dev_or_partition_exist(*blk_dev, *index, NULL) < 0){
+#ifdef CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME
+			*blk_dev = CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME;
+			*index = CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_INDEX;
+			if (detect_blk_dev_or_partition_exist(*blk_dev, *index, NULL) < 0)
+#endif
+				return -1;
+		}
+	}else{
+		printf("not defind blk dev, check make config\n");
+		return -1;
+	}
+#else
+	printf("not defind blk dev, check make config\n");
+	return -1;
+#endif //CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
+	return 0;
+}

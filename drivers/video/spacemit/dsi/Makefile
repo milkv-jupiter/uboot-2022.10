@@ -8,4 +8,5 @@ obj-y += video/spacemit_video_tx.o \
 
 obj-y += video/lcd/lcd_icnl9911c.o
 obj-y += video/lcd/lcd_gx09inx101.o
+obj-y += video/lcd/lcd_lt8911ext_edp_1080p.o
 

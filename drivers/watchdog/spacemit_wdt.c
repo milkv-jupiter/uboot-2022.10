@@ -118,7 +118,6 @@ static int spacemit_wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 	return 0;
 }
 
-
 static int spacemit_wdt_stop(struct udevice *dev)
 {
 	struct spacemit_wdt_priv *priv = dev_get_priv(dev);
@@ -130,6 +129,11 @@ static int spacemit_wdt_stop(struct udevice *dev)
 	// Stop the watchdog timer by clearing the enable bit.
 	spa_wdt_write(0x0, (void *)(priv->base + WDT_ENABLE_OFFSET), priv->base);
 	return 0;
+}
+
+static int spacemit_wdt_remove(struct udevice *dev)
+{
+	return spacemit_wdt_stop(dev);
 }
 
 static int spacemit_wdt_expire_now(struct udevice *dev, ulong flags)
@@ -196,4 +200,6 @@ U_BOOT_DRIVER(spacemit_wdt) = {
 	.of_match = spacemit_wdt_ids,
 	.probe = spacemit_wdt_probe,
 	.ops = &spacemit_wdt_ops,
+	.remove = spacemit_wdt_remove,
+	.flags  = DM_FLAG_OS_PREPARE,
 };

@@ -59,9 +59,9 @@ static void dphy_set_bit_clk_src(uint32_t bit_clk_src,
 
 static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 {
-    uint32_t bitclk;
-	int ui, wakeup;
-	int hs_prep, hs_zero, hs_trail, hs_exit, ck_zero, ck_trail;
+	uint32_t bit_clk, lpx_clk, lpx_time, ta_get, ta_go;
+	int ui, wakeup, reg;
+	int hs_prep, hs_zero, hs_trail, hs_exit, ck_zero, ck_trail, ck_exit;
 	int esc_clk, esc_clk_t;
 	struct spacemit_dphy_timing *phy_timing;
 
@@ -75,10 +75,18 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	esc_clk = dphy_ctx->esc_clk/1000;
 	esc_clk_t = 1000/esc_clk;
 
-	bitclk = dphy_ctx->phy_freq / 1000;
-	ui = 1000/bitclk + 1;
+	bit_clk = dphy_ctx->phy_freq / 1000;
+	ui = 1000/bit_clk + 1;
 
-	/*Jessica: Why no wakeup_ui?*/
+	pr_info("%s: esc_clk %d bit_clk %d\n", __func__, esc_clk, bit_clk);
+
+	lpx_clk = (phy_timing->lpx_constant + phy_timing->lpx_ui * ui) / esc_clk_t + 1;
+	lpx_time = lpx_clk * esc_clk_t;
+
+	/* Below is for NT35451 */
+	ta_get = lpx_time * 5 / esc_clk_t - 1;
+	ta_go = lpx_time * 4 / esc_clk_t - 1;
+
 	wakeup = phy_timing->wakeup_constant;
 	wakeup = wakeup / esc_clk_t + 1;
 
@@ -112,17 +120,40 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	ck_trail = phy_timing->ck_trail_constant + phy_timing->ck_trail_ui * ui;
 	ck_trail = ck_trail / esc_clk_t + 1;
 
-	//dsi_write(DSI_PHY_TIME_0, reg);
-	dsi_write(DSI_PHY_TIME_0, 0x06010603);
+	ck_exit = hs_exit;
 
-	//dsi_write(DSI_PHY_TIME_1, reg);
-	dsi_write(DSI_PHY_TIME_1, 0x130fcd98);
+	reg = (hs_exit << CFG_DPHY_TIME_HS_EXIT_SHIFT)
+		| (hs_trail << CFG_DPHY_TIME_HS_TRAIL_SHIFT)
+		| (hs_zero << CFG_DPHY_TIME_HS_ZERO_SHIFT)
+		| (hs_prep << CFG_DPHY_TIME_HS_PREP_SHIFT);
 
-	//dsi_write(DSI_PHY_TIME_2, reg);
-	dsi_write(DSI_PHY_TIME_2, 0x06040c04);
+	pr_debug("%s dphy time0 hs_exit %d hs_trail %d hs_zero %d hs_prep %d reg 0x%x\n", __func__, hs_exit, hs_trail, hs_zero, hs_prep, reg);
+	dsi_write(DSI_PHY_TIME_0, reg);
+	// dsi_write(DSI_PHY_TIME_0, 0x06010603);
 
-	//dsi_write(DSI_PHY_TIME_3, reg);
-	dsi_write(DSI_PHY_TIME_3, 0x43c);
+	reg = (ta_get << CFG_DPHY_TIME_TA_GET_SHIFT)
+		| (ta_go << CFG_DPHY_TIME_TA_GO_SHIFT)
+		| (wakeup << CFG_DPHY_TIME_WAKEUP_SHIFT);
+
+	pr_debug("%s dphy time1 ta_get %d ta_go %d wakeup %d reg 0x%x\n", __func__, ta_get, ta_go, wakeup, reg);
+	dsi_write(DSI_PHY_TIME_1, reg);
+	// dsi_write(DSI_PHY_TIME_1, 0x130fcd98);
+
+	reg = (ck_exit << CFG_DPHY_TIME_CLK_EXIT_SHIFT)
+		| (ck_trail << CFG_DPHY_TIME_CLK_TRAIL_SHIFT)
+		| (ck_zero << CFG_DPHY_TIME_CLK_ZERO_SHIFT)
+		| (lpx_clk << CFG_DPHY_TIME_CLK_LPX_SHIFT);
+
+	pr_debug("%s dphy time2 ck_exit %d ck_trail %d ck_zero %d lpx_clk %d reg 0x%x\n", __func__, ck_exit, ck_trail, ck_zero, lpx_clk, reg);
+	dsi_write(DSI_PHY_TIME_2, reg);
+	// dsi_write(DSI_PHY_TIME_2, 0x06040c04);
+
+	reg = (lpx_clk << CFG_DPHY_TIME_LPX_SHIFT)
+		| phy_timing->req_ready << CFG_DPHY_TIME_REQRDY_SHIFT;
+
+	pr_debug("%s dphy time3 lpx_clk %d req_ready %d reg 0x%x\n", __func__, lpx_clk, phy_timing->req_ready, reg);
+	dsi_write(DSI_PHY_TIME_3, reg);
+	// dsi_write(DSI_PHY_TIME_3, 0x43c);
 
 	/* calculated timing on brownstone:
 	 * DSI_PHY_TIME_0 0x06080204

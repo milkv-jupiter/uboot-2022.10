@@ -607,10 +607,6 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 	if (!ops->set_parent)
 		return -ENOSYS;
 
-	ret = ops->set_parent(clk, parent);
-	if (ret)
-		return ret;
-
 	/* get private clock struct used for cache */
 	clk_get_priv(clk, &clkp);
 	clk_get_priv(parent, &parentp);
@@ -631,6 +627,11 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 
 		}
 	}
+
+	ret = ops->set_parent(clk, parent);
+	if (ret)
+		return ret;
+
 	if (CONFIG_IS_ENABLED(CLK_CCF))
 		ret = device_reparent(clkp->dev, parentp->dev);
 

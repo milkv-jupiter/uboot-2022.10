@@ -49,7 +49,8 @@ struct spacemit_mipi_info icnl9911c_mipi_info = {
 	.work_mode = SPACEMIT_DSI_MODE_VIDEO, /*command_mode, video_mode*/
 	.rgb_mode = DSI_INPUT_DATA_RGB_MODE_888,
 	.lane_number = 4,
-	.phy_freq = 624*1000,
+	.phy_bit_clock = 614400000,
+	.phy_esc_clock = 51200000,
 	.split_enable = 0,
 	.eotp_enable = 0,
 

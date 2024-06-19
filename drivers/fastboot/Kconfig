@@ -269,6 +269,27 @@ config FASTBOOT_SUPPORT_BLOCK_DEV_INDEX
 	help
 	  The block device number.
 
+config FASTBOOT_SUPPORT_SECOND_BLOCK_DEV
+	bool "Support second blk device"
+	depends on (FASTBOOT_FLASH_MTD || FASTBOOT_MULTI_FLASH_OPTION_MTD) && FASTBOOT_SUPPORT_BLOCK_DEV
+	help
+	  If support other blk dev on mtd flash, it would try to detect it whild detect
+	  the first blk dev fail.
+
+config FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME
+	string "Target second name for block device"
+	depends on FASTBOOT_SUPPORT_SECOND_BLOCK_DEV
+	default "mmc"
+	help
+	  The block device name, such as mmc/nvme/usb/sata
+
+config FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_INDEX
+	int "The block device number"
+	depends on FASTBOOT_SUPPORT_SECOND_BLOCK_DEV
+	default 2
+	help
+	  The second block device number.
+
 config FASTBOOT_CMD_OEM_CONFIG_ACCESS
 	bool "Enable the 'oem config' command"
 	help

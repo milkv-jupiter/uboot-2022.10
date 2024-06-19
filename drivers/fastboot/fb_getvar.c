@@ -290,19 +290,15 @@ static void getvar_mtd_size(char *var_parameter, char *response)
 static void getvar_blk_size(char *var_parameter, char *response)
 {
 	struct blk_desc *dev_desc = NULL;
-	const char *blk_name;
+	char *blk_name;
 	int blk_index;
 
 	u32 boot_mode = get_boot_pin_select();
 	switch(boot_mode){
 	case BOOT_MODE_NOR:
-#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
-		blk_name = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME;
-		blk_index = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX;
-
-		/*nvme devices need scan at first*/
-		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)){
-			run_command("nvme scan", 0);
+		if (get_available_blk_dev(&blk_name, &blk_index)){
+			fastboot_okay("NULL", response);
+			return;
 		}
 
 		dev_desc = blk_get_devnum_by_typename(blk_name, blk_index);
@@ -311,7 +307,6 @@ static void getvar_blk_size(char *var_parameter, char *response)
 		else
 			fastboot_okay("NULL", response);
 		return;
-#endif
 	case BOOT_MODE_EMMC:
 	case BOOT_MODE_SD:
 #ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV

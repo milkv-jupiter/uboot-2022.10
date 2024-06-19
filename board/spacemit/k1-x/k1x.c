@@ -305,10 +305,6 @@ int run_uboot_shell(void)
 
 void _load_env_from_blk(struct blk_desc *dev_desc, const char *dev_name, int dev)
 {
-	/*
-	TODO:
-		load env from bootfs, if bootfs is fat/ext4 at blk dev, use fatload/ext4load.
-	*/
 	int err;
 	u32 part;
 	char cmd[128];
@@ -423,26 +419,18 @@ void import_env_from_bootfs(void)
 #endif
 		break;
 	case BOOT_MODE_NOR:
-#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
 		struct blk_desc *dev_desc;
+		char *blk_name;
+		int blk_index;
 
-		/*nvme need scan at first*/
-		if (!strncmp("nvme", CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME, 4)
-						&& run_command("nvme scan", 0)){
-			pr_err("can not find any nvme devices!\n");
+		if (get_available_blk_dev(&blk_name, &blk_index)){
+			printf("can not get available blk dev\n");
 			return;
 		}
 
-		if (strlen(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME) > 0){
-			/* First try partition names on the default device */
-			dev_desc = blk_get_dev(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME,
-								CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX);
-			if (dev_desc) {
-				_load_env_from_blk(dev_desc, CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME,
-							CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX);
-			}
-	}
-#endif
+		dev_desc = blk_get_dev(blk_name, blk_index);
+		if (dev_desc)
+			_load_env_from_blk(dev_desc, blk_name, blk_index);
 		break;
 	case BOOT_MODE_EMMC:
 	case BOOT_MODE_SD:
@@ -515,10 +503,16 @@ void setenv_boot_mode(void)
 		env_set("boot_device", "nand");
 		break;
 	case BOOT_MODE_NOR:
+		char *blk_name;
+		int blk_index;
+
+		if (get_available_blk_dev(&blk_name, &blk_index)){
+			printf("can not get available blk dev\n");
+			return;
+		}
+
 		env_set("boot_device", "nor");
-#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
-		env_set("boot_devnum", simple_itoa(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX));
-#endif
+		env_set("boot_devnum", simple_itoa(blk_index));
 		break;
 	case BOOT_MODE_EMMC:
 		env_set("boot_device", "mmc");
@@ -710,11 +704,8 @@ void set_env_ethaddr(u8 *eeprom_data) {
 
 void set_dev_serial_no(uint8_t *eeprom_data)
 {
-	u8 sn[6] = {0};
-	char cmd_str[128] = {0};
 	struct tlvinfo_tlv *tlv_entry = NULL;
-	int i = 0;
-	unsigned int seed = 0;
+	char *strval;
 
 	// Decide where to read the serial number from
 	if (eeprom_data != NULL) {
@@ -722,35 +713,18 @@ void set_dev_serial_no(uint8_t *eeprom_data)
 	} else {
 		read_from_eeprom(&tlv_entry, TLV_CODE_SERIAL_NUMBER);
 	}
-	if (tlv_entry && tlv_entry->length == 12) {
-		for (i = 0; i < 12; i++) {
-			if (tlv_entry->value[i] != 0) {
-				pr_err("Serial number is valid.\n");
-				return;
-			}
-		}
+
+	if (tlv_entry && (0 < tlv_entry->length) && (tlv_entry->length <= 32)) {
+		pr_info("Serial number is valid.\n");
+		strval = malloc(tlv_entry->length + 1);
+		memcpy(strval, tlv_entry->value, tlv_entry->length);
+		strval[tlv_entry->length] = 0;
+		env_set("serial#", strval);
+		free(strval);
 	}
-
-	pr_info("Generate rand serial number:\n");
-	/* Generate rand serial number */
-	seed = get_ticks();
-	for (i = 0; i < 6; i++) {
-		sn[i] = rand_r(&seed);
-		pr_info("%02x", sn[i]);
+	else {
+		env_set("serial#", CONFIG_K1_X_BOARD_DEFAULT_SN);
 	}
-	pr_info("\n");
-
-	/*must read before set/write to eeprom using tlv_eeprom command*/
-	run_command("tlv_eeprom", 0);
-
-	/* save serial number to eeprom */
-	snprintf(cmd_str, (sizeof(cmd_str) - 1), "tlv_eeprom set 0x23 %02x%02x%02x%02x%02x%02x", \
-			sn[0], sn[1], sn[2], sn[3], sn[4], sn[5]);
-	run_command(cmd_str, 0);
-
-	memset(cmd_str, 0, sizeof(cmd_str));
-	snprintf(cmd_str, (sizeof(cmd_str) - 1), "tlv_eeprom write");
-	run_command(cmd_str, 0);
 }
 
 struct code_desc_info {
@@ -830,9 +804,6 @@ int board_late_init(void)
 	struct tlvinfo_tlv *first_entry = NULL;
 
 	// save_ddr_training_info();
-	if (IS_ENABLED(CONFIG_SYSRESET_SPACEMIT))
-		device_bind_driver(gd->dm_root, "spacemit_sysreset",
-					"spacemit_sysreset", NULL);
 
 	// it MAY be NULL when did NOT load build-in env and eeprom is empty
 	if (NULL == env_get("product_name"))

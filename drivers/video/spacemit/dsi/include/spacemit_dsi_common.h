@@ -90,7 +90,9 @@ struct spacemit_mipi_info {
 	unsigned int work_mode; /*command_mode, video_mode*/
 	unsigned int rgb_mode;
 	unsigned int lane_number;
-	unsigned int phy_freq;
+	unsigned int phy_bit_clock;
+	unsigned int phy_esc_clock;
+
 	unsigned int split_enable;
 	unsigned int eotp_enable;
 
@@ -138,5 +140,6 @@ int lcd_mipi_probe(void);
 
 int lcd_icnl9911c_init(void);
 int lcd_gx09inx101_init(void);
+int lcd_lt8911ext_edp_1080p_init(void);
 
 #endif /*_SPACEMIT_DSI_COMMON_H_*/

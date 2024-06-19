@@ -33,19 +33,19 @@ static int do_get_part_info(struct blk_desc **dev_desc, const char *name,
 			    struct disk_partition *info)
 {
 	int ret = -1;
-#ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
-	if (strlen(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME) > 0){
+	char *blk_dev;
+	int blk_index = -1;
 
-		/* First try partition names on the default device */
-		*dev_desc = blk_get_dev(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME,
-							 CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX);
-		if (*dev_desc) {
-			ret = part_get_info_by_name(*dev_desc, name, info);
-			if (ret >= 0)
-				return ret;
-		}
+	if (get_available_blk_dev(&blk_dev, &blk_index))
+		return -1;
+
+	/* First try partition names on the default device */
+	*dev_desc = blk_get_dev(blk_dev, blk_index);
+	if (*dev_desc) {
+		ret = part_get_info_by_name(*dev_desc, name, info);
+		if (ret >= 0)
+			return ret;
 	}
-#endif
 
 	printf("has not define block device name \n");
 	return ret;
