@@ -27,6 +27,8 @@
 #define TOP_DDR_NUM				1
 
 extern u32 ddr_cs_num;
+extern const char *ddr_type;
+extern int ddr_freq_change(u32 data_rate);
 
 static int test_pattern(fdt_addr_t base, fdt_size_t size)
 {
@@ -114,7 +116,7 @@ ERR_HANDLE:
 }
 
 #ifdef CONFIG_K1_X_BOARD_ASIC
-extern void lpddr4_silicon_init(uint32_t base, uint32_t data_rate);
+extern void lpddr4_silicon_init(uint32_t base, const char *ddr_type, uint32_t data_rate);
 #endif
 
 static int spacemit_ddr_probe(struct udevice *dev)
@@ -149,12 +151,18 @@ static int spacemit_ddr_probe(struct udevice *dev)
 		ddr_cs_num = DDR_CS_NUM;
 	}
 
+	if (NULL == ddr_type) {
+		ddr_type = dev_read_string(dev, "type");
+	}
+	printf("DDR type %s\n", ddr_type);
+
 	/* init dram */
 	uint64_t start = get_timer(0);
-	lpddr4_silicon_init(ddrc_base, ddr_datarate);
+	lpddr4_silicon_init(ddrc_base, ddr_type, ddr_datarate);
 	start = get_timer(start);
 	printf("lpddr4_silicon_init consume %lldms\n", start);
 #endif
+	ddr_freq_change(ddr_datarate);
 
 	ret = test_pattern(CONFIG_SYS_SDRAM_BASE, DDR_CHECK_SIZE);
 	if (ret < 0) {

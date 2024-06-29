@@ -28,7 +28,7 @@
 			device_type = "cpu";
 			reg = <0>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu0_intc: interrupt-controller {
@@ -42,7 +42,7 @@
 			device_type = "cpu";
 			reg = <1>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu1_intc: interrupt-controller {
@@ -56,7 +56,7 @@
 			device_type = "cpu";
 			reg = <2>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu2_intc: interrupt-controller {
@@ -70,7 +70,7 @@
 			device_type = "cpu";
 			reg = <3>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu3_intc: interrupt-controller {
@@ -84,7 +84,7 @@
 			device_type = "cpu";
 			reg = <4>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu4_intc: interrupt-controller {
@@ -98,7 +98,7 @@
 			device_type = "cpu";
 			reg = <5>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu5_intc: interrupt-controller {
@@ -112,7 +112,7 @@
 			device_type = "cpu";
 			reg = <6>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu6_intc: interrupt-controller {
@@ -126,7 +126,7 @@
 			device_type = "cpu";
 			reg = <7>;
 			status = "okay";
-			riscv,isa = "rv64imafdcv_zicsr_zifencei_zicbom_zicboz_zicbop_zihintpause_zicond_zba_zbb_zbc_zbs_svpbmt_sstc_sscofpmf";
+			riscv,isa = "rv64imafdcv";
 			mmu-type = "riscv,sv39";
 
 			cpu7_intc: interrupt-controller {

@@ -73,6 +73,32 @@ typedef enum {
 	IO_X8,
 } io_width;
 
+// emu for IO parameter
+typedef enum {
+	SAMSUNG = 0x1,
+	SK_HYNIX = 0x6,
+	MICRON = 0xff,
+}manufacturer_id;
+
+typedef enum {
+	R_240 = 1,
+	R_120,
+	R_80,
+	R_60,
+	R_48,
+	R_40,
+}tx_ds_odt_rx_odt;
+
+typedef enum {
+	VOH_0P6 = 0x0,
+	VOH_0P5,
+}pu_cal;
+
+typedef enum {
+	LPDDR4X = 0x0,
+	LPDDR4,
+}device_type;
+
 static const unsigned char lpddr4_training_img[] = {
 	0x79, 0x71, 0x06, 0xf4, 0x22, 0xf0, 0x00, 0x18, 0x23, 0x3c, 0xa4, 0xfc,
 	0x83, 0x37, 0x84, 0xfd, 0x9c, 0x63, 0x23, 0x26, 0xf4, 0xfe, 0x83, 0x37,

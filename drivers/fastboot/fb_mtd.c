@@ -18,11 +18,14 @@
 #include <u-boot/crc.h>
 #include <mapmem.h>
 #include <mtd.h>
+#include <linux/mtd/spi-nor.h>
 
 struct fb_mtd_sparse {
 	struct mtd_info		*mtd;
 	struct part_info	*part;
 };
+
+static bool unlock_flag = false;
 
 static bool mtd_is_aligned_with_min_io_size(struct mtd_info *mtd, u64 size)
 {
@@ -294,6 +297,23 @@ int fastboot_mtd_get_part_info(const char *part_name,
 	}
 }
 
+static void _nor_unlock(struct mtd_info *mtd)
+{
+	if (!unlock_flag && mtd->type == MTD_NORFLASH){
+		if (mtd->parent != NULL && mtd->parent->priv != NULL){
+				struct spi_nor *nor_dev = (struct spi_nor *)mtd->parent->priv;
+				if (nor_dev->flash_unlock != NULL){
+					nor_dev->flash_unlock(nor_dev, 0, mtd->size);
+				}else{
+					pr_info("not define unlock\n");
+				}
+		}else{
+			pr_info("not define priv\n");
+		}
+		unlock_flag = true;
+	}
+}
+
 /**
  * fastboot_mtd_flash_write() - Write image to MTD for fastboot
  *
@@ -363,13 +383,6 @@ void fastboot_mtd_flash_write(const char *cmd, void *download_buffer,
 		return;
 	}
 
-	/*flash env*/
-	/*if (strcmp(cmd, "env") == 0) {*/
-	/*	printf("flash env \n");*/
-	/*	fastboot_oem_flash_env(cmd, fastboot_buf_addr, download_bytes,*/
-	/*							response, fdev);*/
-	/*	return;*/
-	/*}*/
 #endif
 
 	ret = fb_mtd_lookup(cmd, &mtd, &part);
@@ -379,6 +392,9 @@ void fastboot_mtd_flash_write(const char *cmd, void *download_buffer,
 		fastboot_fail("invalid mtd device or partition", response);
 		return;
 	}
+
+	/*unlock nor flash protect*/
+	_nor_unlock(mtd);
 
 	if (need_erase) {
 		/*must erase at first when write data to mtd devices*/
@@ -491,6 +507,9 @@ void fastboot_mtd_flash_erase(const char *cmd, char *response)
 		fastboot_fail("invalid mtd device or partition", response);
 		return;
 	}
+
+	/*unlock nor flash protect*/
+	_nor_unlock(mtd);
 
 	ret = _fb_mtd_erase(mtd, 0);
 	if (ret) {

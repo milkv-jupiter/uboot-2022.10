@@ -18,7 +18,7 @@
 				regulator-name = "dcdc1";
 				regulator-min-microvolt = <480000>;
 				regulator-max-microvolt = <3160000>;
-				regulator-init-microvolt = <950000>;
+				regulator-init-microvolt = <1050000>;
 				regulator-boot-on;
 				u-boot,dm-spl;
 				regulator-state-mem {
@@ -243,7 +243,7 @@
 				regulator-name = "edcdc1";
 				regulator-min-microvolt = <600000>;
 				regulator-max-microvolt = <1500000>;
-				regulator-init-microvolt = <950000>;
+				regulator-init-microvolt = <1050000>;
 				regulator-boot-on;
 				u-boot,dm-spl;
 				regulator-state-mem {

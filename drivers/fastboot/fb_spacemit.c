@@ -884,6 +884,7 @@ const struct oem_config_info config_info[] = {
 	{ "manufacturer", TLV_CODE_MANUF_NAME, 32, NULL },
 	{ "sdk_version", TLV_CODE_SDK_VERSION, 3, NULL},
 	{ "ddr_cs_num", TLV_CODE_DDR_CSNUM, 3, NULL},
+	{ "ddr_type", TLV_CODE_DDR_TYPE, 32, NULL},
 	{ "pmic_type", TLV_CODE_PMIC_TYPE, 3, NULL},
 	{ "eeprom_i2c_index", TLV_CODE_EEPROM_I2C_INDEX, 3, NULL},
 	{ "eeprom_pin_group", TLV_CODE_EEPROM_PIN_GROUP, 3, NULL},

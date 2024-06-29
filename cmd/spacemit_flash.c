@@ -28,6 +28,7 @@
 #include <mtd.h>
 #include <fb_mtd.h>
 #include <nvme.h>
+#include <watchdog.h>
 
 static int dev_emmc_num = -1;
 static int dev_sdio_num = -1;
@@ -365,6 +366,7 @@ void recovery_show_result(struct flash_dev *fdev, int ret)
 
 	while(1){
 		/* do not retrun while flashing over! */
+		WATCHDOG_RESET();
 	}
 
 }

@@ -8,7 +8,7 @@
 #include "k1-x_spm8821.dtsi"
 
 / {
-	model = "M1-MUSE-BOOK";
+	model = "SiPEED LPi3A board";
 
 	aliases {
 		efuse_power = &ldo_31;
@@ -22,6 +22,17 @@
 	chosen {
 		bootargs = "earlycon=sbi console=ttyS0,115200 debug loglevel=8,initcall_debug=1 rdinit=/init.tmp";
 		stdout-path = "serial0:115200n8";
+	};
+
+	usb3hub:usb3hub {
+		compatible = "spacemit,usb-hub";
+		hub-gpios = <
+			&gpio 123 0	/* usb3 hub en */
+			&gpio 124 0>;	/* usb3 hub rst*/
+		vbus-gpios = <&gpio 97 0>;	/* gpio_97 for usb3 hub output vbus */
+		regulator-force-boot-off;
+		vbus_delay_ms = <250>;
+		status = "okay";
 	};
 };
 
@@ -41,12 +52,16 @@
 	timebase-frequency = <24000000>;
 };
 
-&ccu {
-	pll2-freq = <2800000000>;
-};
-
 &uart0 {
 	status = "okay";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
 };
 
 &i2c2 {
@@ -64,28 +79,25 @@
 	};
 };
 
-&i2c6 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c6_2>;
-	clock-frequency = <100000>;
+&i2c3 {
+	status = "disabled";
+};
+
+&i2c4 {
+	clock-frequency = <400000>;
 	status = "okay";
+};
 
-	lt8911exb_i2c@29 {
-		compatible = "lontium,lt8911exb";
-		reg = <0x29>;
-		status = "okay";
+&i2c5 {
+	status = "disabled";
+};
 
-		enable-gpios = <&gpio 83 0>;
-		bl-gpios = <&gpio 75 0>;
-		standby-gpios = <&gpio 92 0>;
-		reset-gpios = <&gpio 114 0>;
+&i2c6 {
+	status = "disabled";
+};
 
-		port {
-			lt8911exb_in: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
+&i2c7 {
+	status = "disabled";
 };
 
 &pinctrl {
@@ -103,14 +115,21 @@
 		&range GPIO_81  3 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_90  1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_91  2 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
-		&range DVL0     2 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range DVL0     1 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range DVL1     1 (MUX_MODE1 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS0)
 		&range GPIO_110 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_114 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 		&range GPIO_115 2 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
-		&range GPIO_123 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
+		&range GPIO_123 1 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS0)
 		&range GPIO_124 1 (MUX_MODE0 | EDGE_NONE | PULL_UP   | PAD_1V8_DS2)
 		&range GPIO_125 3 (MUX_MODE0 | EDGE_NONE | PULL_DOWN | PAD_1V8_DS2)
 	>;
+
+	usbp1_vbus: usbp1_vbus {
+		pinctrl-single,pins =<
+			K1X_PADCONF(GPIO_66, MUX_MODE0, (EDGE_NONE | PULL_UP | PAD_1V8_DS2))    /* drive_vbus1_iso */
+		>;
+	};
 
 	gpio80_pmx_func0: gpio80_pmx_func0 {
 		pinctrl-single,pins = <
@@ -143,6 +162,24 @@
 	status = "okay";
 };
 
+&combphy {
+	status = "okay";
+};
+
+&usbdrd3 {
+	status = "okay";
+	vbus-supply = <&usb3hub>;
+	dwc3@c0a00000 {
+		dr_mode = "host";
+		phy_type = "utmi";
+		snps,dis_enblslpm_quirk;
+		snps,dis_u2_susphy_quirk;
+		snps,dis_u3_susphy_quirk;
+		snps,dis-del-phy-power-chg-quirk;
+		snps,dis-tx-ipgap-linecheck-quirk;
+	};
+};
+
 &sdhci0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mmc1 &gpio80_pmx_func0>;
@@ -151,6 +188,7 @@
 	cd-inverted;
 	cap-sd-highspeed;
 	sdh-phy-module = <0>;
+	clk-src-freq = <204800000>;
 	status = "okay";
 };
 
@@ -161,12 +199,46 @@
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
 	sdh-phy-module = <1>;
+	clk-src-freq = <375000000>;
 	status = "okay";
 };
 
-&pcie2_rc {
+&eth0 {
+	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcie2_4>;
+	pinctrl-0 = <&pinctrl_gmac0>;
+
+	phy-reset-pin = <110>;
+
+	clk_tuning_enable;
+	clk-tuning-by-delayline;
+	tx-phase = <90>;
+	rx-phase = <73>;
+
+	phy-mode = "rgmii";
+	phy-addr = <1>;
+	phy-handle = <&rgmii>;
+
+	ref-clock-from-phy;
+
+	mdio {
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+		rgmii: phy@0 {
+			compatible = "ethernet-phy-id001c.c916";
+			device_type = "ethernet-phy";
+			reg = <0x1>;
+		};
+	};
+};
+
+&pcie0_rc {
+	status = "disabled";
+};
+
+&pcie1_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pcie1_3>;
 	status = "okay";
 };
 
@@ -196,37 +268,17 @@
 &hdmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_0>;
-	status = "disabled";
-};
-
-&ldo_27 {
-	regulator-init-microvolt = <1200000>;
-	regulator-boot-on;
-	regulator-state-mem {
-			regulator-off-in-suspend;
-	};
+	status = "okay";
 };
 
 &mipi_dsi {
-	bit-clk = <933000000>;
-	pix-clk = <142000000>;
-	status = "okay";
-
-	ports {
-		mipi_in: port {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			dsi_out: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&lt8911exb_in>;
-			};
-		};
-	};
+	status = "disabled";
 };
 
 &panel {
-	force-attached = "lt8911ext_edp_1080p";
+	dcp-gpios = <&gpio 82 0>;
+	dcn-gpios = <&gpio 83 0>;
 	bl-gpios = <&gpio 44 0>;
-	status = "okay";
+	reset-gpios = <&gpio 81 0>;
+	status = "disabled";
 };
-

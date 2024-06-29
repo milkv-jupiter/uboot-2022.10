@@ -82,11 +82,12 @@ extern int __data_start[], __data_end[];
 extern int k1x_eeprom_init(void);
 extern int spacemit_eeprom_read(uint8_t chip, uint8_t *buffer, uint8_t id);
 extern bool get_mac_address(uint64_t *mac_addr);
-extern bool get_ddr_cs_number(uint32_t *cs_num);
+extern void update_ddr_info(void);
 extern enum board_boot_mode get_boot_storage(void);
 extern int spl_mtd_read(struct mtd_info *mtd, ulong sector, ulong count, void *buf);
 char *product_name;
 extern u32 ddr_cs_num;
+extern const char *ddr_type;
 
 int timer_init(void)
 {
@@ -462,9 +463,7 @@ int spl_board_init_f(void)
 #endif
 	// get_mac_address(&mac_addr);
 
-	// if fail to get ddr cs number from eeprom, update it from dts node
-	if (!get_ddr_cs_number(&ddr_cs_num))
-		ddr_cs_num = 0;
+	update_ddr_info();
 
 	// restore prevous saved ddr training info data
 	// flag = restore_ddr_training_info(chipid, mac_addr);
@@ -669,18 +668,28 @@ char *get_product_name(void)
 	return NULL;
 }
 
-bool get_ddr_cs_number(uint32_t *cs_num)
+void update_ddr_info(void)
 {
 	int eeprom_addr;
+	uint8_t *info;
 
 	eeprom_addr = k1x_eeprom_init();
-	if ((eeprom_addr >= 0) && (NULL != cs_num) && (0 == spacemit_eeprom_read(
-		eeprom_addr, (uint8_t*)cs_num, TLV_CODE_DDR_CSNUM))) {
-		pr_info("Get ddr cs num %d from eeprom\n", *cs_num);
-		return true;
-	}
+	if (eeprom_addr < 0)
+		return;
 
-	return false;
+	// read ddr type from eeprom
+	info = malloc(32);
+	memset(info, 0, 32);
+	if (0 == spacemit_eeprom_read(eeprom_addr, info, TLV_CODE_DDR_TYPE))
+		ddr_type = info;
+	else
+		free(info);
+
+	// if fail to get ddr cs number from eeprom, update it from dts node
+	if (0 == spacemit_eeprom_read(eeprom_addr, (uint8_t*)&ddr_cs_num, TLV_CODE_DDR_CSNUM))
+		pr_info("Get ddr cs num %d from eeprom\n", ddr_cs_num);
+	else
+		ddr_cs_num = 0;
 }
 
 void spl_board_init(void)

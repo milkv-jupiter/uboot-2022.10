@@ -405,6 +405,18 @@ static int mmc_read_blocks(struct mmc *mmc, void *dst, lbaint_t start,
 	struct mmc_cmd cmd;
 	struct mmc_data data;
 
+	if (blkcnt > 1){
+		cmd.cmdidx = MMC_CMD_SET_BLOCK_COUNT;
+		cmd.cmdarg = blkcnt & 0x0000FFFF;
+		cmd.resp_type = MMC_RSP_R1;
+		if (mmc_send_cmd(mmc, &cmd, NULL)) {
+#if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
+			pr_err("mmc fail to set block count\n");
+#endif
+			return 0;
+		}
+	}
+
 	if (blkcnt > 1)
 		cmd.cmdidx = MMC_CMD_READ_MULTIPLE_BLOCK;
 	else
@@ -424,18 +436,6 @@ static int mmc_read_blocks(struct mmc *mmc, void *dst, lbaint_t start,
 
 	if (mmc_send_cmd(mmc, &cmd, &data))
 		return 0;
-
-	if (blkcnt > 1) {
-		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
-		cmd.cmdarg = 0;
-		cmd.resp_type = MMC_RSP_R1b;
-		if (mmc_send_cmd(mmc, &cmd, NULL)) {
-#if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
-			pr_err("mmc fail to send stop cmd\n");
-#endif
-			return 0;
-		}
-	}
 
 	return blkcnt;
 }

@@ -140,6 +140,16 @@ static ulong mmc_write_blocks(struct mmc *mmc, lbaint_t start,
 		return 0;
 	}
 
+	if (blkcnt > 1){
+		cmd.cmdidx = MMC_CMD_SET_BLOCK_COUNT;
+		cmd.cmdarg = blkcnt & 0x0000FFFF;
+		cmd.resp_type = MMC_RSP_R1;
+		if (mmc_send_cmd(mmc, &cmd, NULL)) {
+			printf("mmc fail to set block count\n");
+			return 0;
+		}
+	}
+
 	if (blkcnt == 0)
 		return 0;
 	else if (blkcnt == 1)
@@ -162,19 +172,6 @@ static ulong mmc_write_blocks(struct mmc *mmc, lbaint_t start,
 	if (mmc_send_cmd(mmc, &cmd, &data)) {
 		printf("mmc write failed\n");
 		return 0;
-	}
-
-	/* SPI multiblock writes terminate using a special
-	 * token, not a STOP_TRANSMISSION request.
-	 */
-	if (!mmc_host_is_spi(mmc) && blkcnt > 1) {
-		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
-		cmd.cmdarg = 0;
-		cmd.resp_type = MMC_RSP_R1b;
-		if (mmc_send_cmd(mmc, &cmd, NULL)) {
-			printf("mmc fail to send stop cmd\n");
-			return 0;
-		}
 	}
 
 	/* Waiting for the ready status */

@@ -722,9 +722,6 @@ void set_dev_serial_no(uint8_t *eeprom_data)
 		env_set("serial#", strval);
 		free(strval);
 	}
-	else {
-		env_set("serial#", CONFIG_K1_X_BOARD_DEFAULT_SN);
-	}
 }
 
 struct code_desc_info {
@@ -931,25 +928,6 @@ enum env_location env_get_location(enum env_operation op, int prio)
 
 int misc_init_r(void)
 {
-#ifdef CONFIG_DYNAMIC_DDR_CLK_FREQ
-	int ret;
-	char cmd[32];
-
-	ret = ddr_freq_max();
-	if(ret < 0) {
-		pr_debug("%s: Try to adjust ddr freq failed!\n", __func__);
-		return ret;
-	}
-
-	// change DDR data rate to 2400MT/s and set
-	sprintf(cmd, "ddrfreq %d", 6);
-	pr_debug("cmd:%s\n", cmd);
-	if (run_command(cmd, 0)) {
-			pr_err("DDR frequency change fail\n");
-			return -1;
-	}
-#endif
-
 	return 0;
 }
 

@@ -78,10 +78,16 @@
 
 #define TLV_CODE_SDK_VERSION		0x40
 #define TLV_CODE_DDR_CSNUM		0x41
+#define TLV_CODE_DDR_TYPE		0x42
 
 #define TLV_CODE_PMIC_TYPE		0x80
 #define TLV_CODE_EEPROM_I2C_INDEX	0x81
 #define TLV_CODE_EEPROM_PIN_GROUP	0x82
+
+// #define RAMDISK_LOAD_ADDR		(CONFIG_FASTBOOT_BUF_ADDR + CONFIG_FASTBOOT_BUF_SIZE)
+// #define DTB_LOAD_ADDR		(CONFIG_FASTBOOT_BUF_ADDR + CONFIG_FASTBOOT_BUF_SIZE * 2)
+#define RAMDISK_LOAD_ADDR		0x21000000
+#define DTB_LOAD_ADDR			0x31000000
 
 #ifndef __ASSEMBLY__
 #include "linux/types.h"
@@ -146,7 +152,7 @@ struct boot_storage_op
 
 #define BOOTENV_DEVICE_CONFIG \
 	"product_name=" DEFAULT_PRODUCT_NAME "\0" \
-	"serial#=123456789ABC\0" \
+	"serial#=0123456789ABCDEF\0" \
 	"manufacturer=" CONFIG_SYS_VENDOR "\0" \
 	"manufacture_date=01/16/2023 11:02:20\0" \
 	"device_version=1\0" \
@@ -158,8 +164,11 @@ struct boot_storage_op
 /*if env not use for spl, please define to board/spacemit/k1-x/k1-x.env */
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"stdout_flash=serial,vidconsole\0" \
-	"kernel_comp_addr_r=0x18000000\0" \
-	"kernel_comp_size=0x4000000\0" \
+	"kernel_comp_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
+	"kernel_comp_size=" __stringify(CONFIG_FASTBOOT_BUF_SIZE) "\0" \
+	"kernel_addr_r=" __stringify(CONFIG_FASTBOOT_BUF_ADDR) "\0" \
+	"ramdisk_addr=" __stringify(RAMDISK_LOAD_ADDR) "\0" \
+	"dtb_addr=" __stringify(DTB_LOAD_ADDR) "\0" \
 	"scriptaddr=0x2c100000\0" \
 	"pxefile_addr_r=0x0c200000\0" \
 	"ipaddr=192.168.1.15\0" \
