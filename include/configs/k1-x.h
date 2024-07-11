@@ -16,7 +16,6 @@
 #define SEC_IMG_SIZE		0x0000000
 #define CONFIG_SYS_SDRAM_BASE	(SYS_DRAM_OFFS + SEC_IMG_SIZE)
 
-#define RISCV_MMODE_TIMERBASE	0xE4000000
 #define RISCV_MMODE_TIMER_FREQ	24000000
 #define RISCV_SMODE_TIMER_FREQ	24000000
 
@@ -27,7 +26,6 @@
 
 #define DEFAULT_PRODUCT_NAME	"k1-x_deb1"
 
-#define K1X_SPL_BOOT_LOAD_ADDR	(0x20200000)
 #define DDR_TRAINING_DATA_BASE	(0xc0832000)
 
 // sram buffer address that save the DDR software training result
@@ -88,6 +86,9 @@
 // #define DTB_LOAD_ADDR		(CONFIG_FASTBOOT_BUF_ADDR + CONFIG_FASTBOOT_BUF_SIZE * 2)
 #define RAMDISK_LOAD_ADDR		0x21000000
 #define DTB_LOAD_ADDR			0x31000000
+
+// for those has NOT been through test procedure(ATE)
+#define SVT_DRO_DEFAULT_VALUE	(120)
 
 #ifndef __ASSEMBLY__
 #include "linux/types.h"

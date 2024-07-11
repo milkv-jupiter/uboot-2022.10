@@ -36,6 +36,9 @@
 #include <dm/device.h>
 #include <dm/device-internal.h>
 #include <g_dnl.h>
+#include <fdt_simplefb.h>
+#include <mtd_node.h>
+#include <misc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 static char found_partition[64] = {0};
@@ -423,7 +426,7 @@ void import_env_from_bootfs(void)
 		char *blk_name;
 		int blk_index;
 
-		if (get_available_blk_dev(&blk_name, &blk_index)){
+		if (get_available_boot_blk_dev(&blk_name, &blk_index)){
 			printf("can not get available blk dev\n");
 			return;
 		}
@@ -506,7 +509,7 @@ void setenv_boot_mode(void)
 		char *blk_name;
 		int blk_index;
 
-		if (get_available_blk_dev(&blk_name, &blk_index)){
+		if (get_available_boot_blk_dev(&blk_name, &blk_index)){
 			printf("can not get available blk dev\n");
 			return;
 		}
@@ -996,3 +999,73 @@ int board_fit_config_name_match(const char *name)
 		return -1;
 }
 #endif
+
+static uint32_t get_dro_from_efuse(void)
+{
+	struct udevice *dev;
+	uint8_t fuses[2];
+	uint32_t dro = SVT_DRO_DEFAULT_VALUE;
+	int ret;
+
+	/* retrieve the device */
+	ret = uclass_get_device_by_driver(UCLASS_MISC,
+			DM_DRIVER_GET(spacemit_k1x_efuse), &dev);
+	if (ret) {
+		return ret;
+	}
+
+	// read from efuse, each bank has 32byte efuse data
+	// SVT-DRO in bank7 bit173~bit181
+	ret = misc_read(dev, 7 * 32 + 21, fuses, sizeof(fuses));
+	if (0 == ret) {
+		// (byte1 bit0~bit5) << 3 | (byte0 bit5~7) >> 5
+		dro = (fuses[0] >> 5) & 0x07;
+		dro |= (fuses[1] & 0x3F) << 3;
+	}
+
+	if (0 == dro)
+		dro = SVT_DRO_DEFAULT_VALUE;
+	return dro;
+}
+
+static int ft_board_cpu_fixup(void *blob, struct bd_info *bd)
+{
+	int node, ret;
+	uint32_t dro;
+
+	node = fdt_path_offset(blob, "/cpus");
+	if (node < 0) {
+		pr_err("Can't find cpus node!\n");
+		return -EINVAL;
+	}
+
+	dro = cpu_to_fdt32(get_dro_from_efuse());
+	ret = fdt_setprop(blob, node, "svt-dro", &dro, sizeof(dro));
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	int node;
+	static const struct node_info nodes[] = {
+		{ "spacemit,k1x-qspi", MTD_DEV_TYPE_NOR, },  /* SPI flash */
+	};
+
+	/* update MTD partition info for nor boot */
+	if (CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS) &&
+		BOOT_MODE_NOR == get_boot_mode())
+		fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+
+	if (CONFIG_IS_ENABLED(FDT_SIMPLEFB)) {
+		node = fdt_node_offset_by_compatible(blob, -1, "simple-framebuffer");
+		if (node < 0)
+			fdt_simplefb_add_node(blob);
+
+		fdt_simplefb_enable_and_mem_rsv(blob);
+	}
+
+	ft_board_cpu_fixup(blob, bd);
+	return 0;
+}

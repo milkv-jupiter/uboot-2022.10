@@ -4,9 +4,11 @@ set -e
 case "$1" in
 configure)
     target=""
-    if grep -q '^spacemit' /sys/firmware/devicetree/base/model; then
+    if grep -q '^spacemit' /sys/firmware/devicetree/base/model || grep -q '^spacemit' /sys/devices/soc0/family; then
         target="spacemit"
     else
+        echo "Neither /sys/firmware/devicetree/base/model nor /sys/devices/soc0/family starts with 'spacemit'."
+        echo "This may indicate that you are installing this package in a chroot environment."
         exit 0
     fi
 
@@ -41,8 +43,6 @@ configure)
             UBOOT_SEEK=0
             if [ -e $BOOTINFO ]; then
                 echo 0 | tee /sys/block/mmcblk2boot0/force_ro
-            else
-                exit 0
             fi
             ;;
         "/dev/nvme0n1"*)
@@ -58,12 +58,12 @@ configure)
             ;;
         *)
             echo "Unsupported root=$ROOT"
-            exit 0
+            exit 1
             ;;
         esac
     else
         echo "Missing root= in cmdline"
-        exit 0
+        exit 1
     fi
 
     BIN_DIR="/usr/lib/u-boot/$target"
@@ -73,7 +73,7 @@ configure)
         if [ ! -e "$file" ]; then
             # 任意不存在则退出
             echo "Missing $file"
-            exit 0
+            exit 1
         fi
     done
 

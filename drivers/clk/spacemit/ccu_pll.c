@@ -187,10 +187,11 @@ static ulong ccu_pll_set_rate(struct clk *clk, ulong rate)
 	union pllx_swcr1 swcr1;
 	union pllx_swcr3 swcr3;
 	bool found = false;
+	bool pll_enabled = false;
 
 	if (ccu_pll_is_enabled(clk)) {
-		pr_info("%s is enabled, ignore the setrate!\n", clk->dev->name);
-		return 0;
+		pll_enabled = true;
+		ccu_pll_disable(clk);
 	}
 
 	old_rate = __get_vco_freq(clk);
@@ -212,6 +213,8 @@ static ulong ccu_pll_set_rate(struct clk *clk, ulong rate)
 
 	} else {
 		pr_err("don't find freq table for pll\n");
+		if (pll_enabled)
+			ccu_pll_enable(clk);
 		return -EINVAL;
 	}
 
@@ -228,6 +231,8 @@ static ulong ccu_pll_set_rate(struct clk *clk, ulong rate)
 	swcr3.b.div_frc = div_frc;
 	pll_writel_pll_swcr3(swcr3.v, p->common);
 
+	if (pll_enabled)
+		ccu_pll_enable(clk);
 	return 0;
 }
 

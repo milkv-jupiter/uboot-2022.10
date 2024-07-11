@@ -36,18 +36,6 @@
 	};
 };
 
-&cpu_0 {
-	/* boot frequency for cluster-0, should be 1600000, 1228000, 819000, or 614000 */
-	boot_freq_cluster0 = <1228000>;
-	/* boot frequency for cluster-1, should be 1600000, 1228000, 819000, or 614000 */
-	boot_freq_cluster1 = <1228000>;
-};
-
-&dramc {
-	/* dram data rate, should be 1200, 1600, or 2400 */
-	datarate = <2400>;
-};
-
 &cpus {
 	timebase-frequency = <24000000>;
 };

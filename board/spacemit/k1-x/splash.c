@@ -56,7 +56,7 @@ int set_nor_splash_location(struct splash_location *locations) {
 	char *blk_name;
 	char devpart_str[16];
 
-	if (get_available_blk_dev(&blk_name, &blk_index)){
+	if (get_available_boot_blk_dev(&blk_name, &blk_index)){
 		printf("can not get available blk dev\n");
 		return -1;
 	}
@@ -145,7 +145,7 @@ int splash_screen_prepare(void)
 		int blk_index;
 		char *blk_name;
 
-		if (get_available_blk_dev(&blk_name, &blk_index)){
+		if (get_available_boot_blk_dev(&blk_name, &blk_index)){
 			printf("can not get available blk dev\n");
 			return -1;
 		}

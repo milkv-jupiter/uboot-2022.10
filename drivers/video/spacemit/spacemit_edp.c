@@ -1049,6 +1049,7 @@ void LT8911EXB_LinkTrainResultCheck(struct udevice *dev)
 
 static int edp_panel_enable_backlight(struct udevice *dev)
 {
+	struct edp_panel_priv *priv = dev_get_priv(dev);
 	pr_debug("%s: device %s \n", __func__, dev->name);
 
 	Reset_LT8911EXB(dev);     // Reset LT8911EXB
@@ -1070,6 +1071,9 @@ static int edp_panel_enable_backlight(struct udevice *dev)
 	pr_debug("\r\nDpcdRead(0x0202) = 0x%x\r\n",DpcdRead(dev,0x0202));
 
 	PCR_Status(dev);			// just for Check PCR CLK
+
+	dm_gpio_set_value(&priv->enable_gpio, 1);
+	dm_gpio_set_value(&priv->bl_gpio, 1);
 
 	return 0;
 }
@@ -1123,9 +1127,7 @@ static int edp_panel_probe(struct udevice *dev)
 		      __func__, ret);
 	}
 
-	dm_gpio_set_value(&priv->enable_gpio, 1);
 	dm_gpio_set_value(&priv->standby_gpio, 1);
-	dm_gpio_set_value(&priv->bl_gpio, 1);
 	mdelay(50);
 
 	Reset_LT8911EXB(dev);

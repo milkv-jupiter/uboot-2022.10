@@ -140,7 +140,7 @@ static uint32_t adjust_cpu_freq(uint64_t cluster, uint32_t freq)
 	val &= ~(0x07 | BIT(13));
 	switch(freq) {
 	case 1600000:
-		val |= 0x07;
+		val |= 0x07 | BIT(13); //set cpu freq to PLL3_DIV1
 		break;
 
 	case 1228000:
@@ -180,13 +180,16 @@ void raise_cpu_frequency(void)
 	val |= BIT(16) | BIT(15) | BIT(14) | BIT(13);
 	writel(val, (void __iomem *)(K1X_MPMU_BASE + 0x1024));
 
-	/* enable PLL3(3200Mhz) */
+	/* set the frequency of pll3 to 1.6G */
+	writel(0x0050cd61, (void __iomem *)(K1X_APB_SPARE_BASE + 0x124));
+
+	/* enable PLL3 */
 	val = readl((void __iomem *)(K1X_APB_SPARE_BASE + 0x12C));
 	val |= BIT(31);
 	writel(val, (void __iomem *)(K1X_APB_SPARE_BASE + 0x12C));
-	/* enable PLL3_DIV2 */
+	/* enable PLL3_DIV2 and PLL3_DIV1*/
 	val = readl((void __iomem *)(K1X_APB_SPARE_BASE + 0x128));
-	val |= BIT(1);
+	val |= BIT(1) | BIT(0);
 	writel(val, (void __iomem *)(K1X_APB_SPARE_BASE + 0x128));
 
 	cpu = cpu_get_current_dev();

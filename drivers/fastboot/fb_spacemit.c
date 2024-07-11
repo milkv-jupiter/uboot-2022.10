@@ -1321,7 +1321,7 @@ void clear_storage_data(char *cmd_parameter, char *response)
  * @param partition try to find partition exist or not.
  * @return int return partition index while finding partition in blk dev.
 */
-int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, char *partition)
+int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, const char *partition)
 {
 	struct blk_desc *dev_desc;
 	struct disk_partition info;
@@ -1355,14 +1355,7 @@ int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, char *parti
 	return 0;
 }
 
-/**
- * @brief try to find available blk dev while defind multi blks at nor boot.
- *
- * @param blk_dev return available blk dev.
- * @param index return available blk index.
- * @param return return 0 while detect available blk dev.
-*/
-int get_available_blk_dev(char **blk_dev, int *index)
+int _get_available_blk_or_part(char **blk_dev, int *index, const char *partition)
 {
 #ifdef CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
 	static bool scan_nvme = false;
@@ -1383,11 +1376,11 @@ int get_available_blk_dev(char **blk_dev, int *index)
 	if (strlen(CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME) > 0){
 		*blk_dev = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME;
 		*index = CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_INDEX;
-		if (detect_blk_dev_or_partition_exist(*blk_dev, *index, NULL) < 0){
+		if (detect_blk_dev_or_partition_exist(*blk_dev, *index, partition) < 0){
 #ifdef CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME
 			*blk_dev = CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_NAME;
 			*index = CONFIG_FASTBOOT_SUPPORT_SECOND_BLOCK_DEV_INDEX;
-			if (detect_blk_dev_or_partition_exist(*blk_dev, *index, NULL) < 0)
+			if (detect_blk_dev_or_partition_exist(*blk_dev, *index, partition) < 0)
 #endif
 				return -1;
 		}
@@ -1399,5 +1392,31 @@ int get_available_blk_dev(char **blk_dev, int *index)
 	printf("not defind blk dev, check make config\n");
 	return -1;
 #endif //CONFIG_FASTBOOT_SUPPORT_BLOCK_DEV_NAME
+	printf("detect available blk:%s\n", *blk_dev);
 	return 0;
+}
+
+
+
+/**
+ * @brief try to find available blk dev while defind multi blks at nor boot.
+ *
+ * @param blk_dev return available blk dev.
+ * @param index return available blk index.
+ * @param return return 0 while detect available blk dev.
+*/
+int get_available_blk_dev(char **blk_dev, int *index)
+{
+	return _get_available_blk_or_part(blk_dev, index, NULL);
+}
+
+/**
+ * @brief try to find available bootable blk dev.
+ * @param blk_dev return available bootable blk dev.
+ * @param index return available bootable blk index.
+ * @param return return 0 while detect available blk dev.
+*/
+int get_available_boot_blk_dev(char **blk_dev, int *index)
+{
+	return _get_available_blk_or_part(blk_dev, index, BOOTFS_NAME);
 }

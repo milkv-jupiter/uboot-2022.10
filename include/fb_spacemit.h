@@ -297,7 +297,7 @@ int _write_mtd_partition(struct flash_dev *fdev);
  * @param partition try to find partition exist or not.
 * @return int return partition index while finding partition in blk dev.
 */
-int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, char *partition);
+int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, const char *partition);
 
 /**
  * @brief try to find available blk dev while defind multi blks at nor boot.
@@ -307,5 +307,13 @@ int detect_blk_dev_or_partition_exist(char *blk_name, int blk_index, char *parti
  * @param return return 0 while detect available blk dev.
 */
 int get_available_blk_dev(char **blk_dev, int *index);
+
+/**
+ * @brief try to find available bootable blk dev.
+ * @param blk_dev return available bootable blk dev.
+ * @param index return available bootable blk index.
+ * @param return return 0 while detect available blk dev.
+*/
+int get_available_boot_blk_dev(char **blk_dev, int *index);
 
 #endif

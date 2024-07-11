@@ -119,27 +119,27 @@
 			};
 		};
 		fdt_12 {
-                        description = "m1-x_milkv-jupiter";
-                        type = "flat_dt";
-                        compression = "none";
-                        data = /incbin/("../dtb/m1-x_milkv-jupiter.dtb");
-                        hash-1 {
-                                algo = "crc32";
-                        };
+			description = "m1-x_milkv-jupiter";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/m1-x_milkv-jupiter.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
 		};
 		fdt_13 {
-                        description = "k1-x_lpi3a";
-                        type = "flat_dt";
-                        compression = "none";
-                        data = /incbin/("../dtb/k1-x_lpi3a.dtb");
-                        hash-1 {
-                                algo = "crc32";
-                        };
-                };
+			description = "k1-x_lpi3a";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_lpi3a.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
 	};
 
 	configurations {
-		default = "conf_1";
+		default = "conf_2";
 		conf_1 {
 			description = "k1-x_evb";
 			loadables = "uboot";
@@ -196,15 +196,14 @@
 			fdt = "fdt_11";
 		};
 		conf_12 {
-                        description = "m1-x_milkv-jupiter";
-                        loadables = "uboot";
-                        fdt = "fdt_12";
-                };
-		 conf_13 {
-                        description = "k1-x_lpi3a";
-                        loadables = "uboot";
-                        fdt = "fdt_13";
-                };
-
+			description = "m1-x_milkv-jupiter";
+			loadables = "uboot";
+			fdt = "fdt_12";
+		};
+		conf_13 {
+			description = "k1-x_lpi3a";
+			loadables = "uboot";
+			fdt = "fdt_13";
+		};
 	};
 };
