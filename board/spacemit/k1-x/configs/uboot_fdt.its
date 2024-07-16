@@ -136,6 +136,15 @@
 				algo = "crc32";
 			};
 		};
+		fdt_14 {
+			description = "k1-x_MUSE-Card";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_MUSE-Card.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
 	};
 
 	configurations {
@@ -204,6 +213,11 @@
 			description = "k1-x_lpi3a";
 			loadables = "uboot";
 			fdt = "fdt_13";
+		};
+		conf_14 {
+			description = "k1-x_MUSE-Card";
+			loadables = "uboot";
+			fdt = "fdt_14";
 		};
 	};
 };

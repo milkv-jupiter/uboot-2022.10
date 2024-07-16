@@ -1011,7 +1011,7 @@ static uint32_t get_dro_from_efuse(void)
 	ret = uclass_get_device_by_driver(UCLASS_MISC,
 			DM_DRIVER_GET(spacemit_k1x_efuse), &dev);
 	if (ret) {
-		return ret;
+		return dro;
 	}
 
 	// read from efuse, each bank has 32byte efuse data
@@ -1028,10 +1028,59 @@ static uint32_t get_dro_from_efuse(void)
 	return dro;
 }
 
+static int get_chipinfo_from_efuse(uint32_t *product_id, uint32_t *wafer_tid)
+{
+	struct udevice *dev;
+	uint8_t fuses[3];
+	int ret;
+
+	*product_id = 0;
+	*wafer_tid = 0;
+	/* retrieve the device */
+	ret = uclass_get_device_by_driver(UCLASS_MISC,
+			DM_DRIVER_GET(spacemit_k1x_efuse), &dev);
+	if (ret) {
+		return ENODEV;
+	}
+
+	// read from efuse, each bank has 32byte efuse data
+	// product id in bank7 bit182~bit190
+	ret = misc_read(dev, 7 * 32 + 22, fuses, sizeof(fuses));
+	if (0 == ret) {
+		// (byte1 bit0~bit6) << 2 | (byte0 bit6~7) >> 6
+		*product_id = (fuses[0] >> 6) & 0x03;
+		*product_id |= (fuses[1] & 0x7F) << 2;
+	}
+
+	// read from efuse, each bank has 32byte efuse data
+	// product id in bank7 bit139~bit154
+	ret = misc_read(dev, 7 * 32 + 17, fuses, sizeof(fuses));
+	if (0 == ret) {
+		// (byte1 bit0~bit6) << 2 | (byte0 bit3~7) >> 3
+		*wafer_tid = (fuses[0] >> 3) & 0x1F;
+		*wafer_tid |= fuses[1] << 5;
+		*wafer_tid |= (fuses[2] & 0x07) << 13;
+	}
+
+	return 0;
+}
+
 static int ft_board_cpu_fixup(void *blob, struct bd_info *bd)
 {
 	int node, ret;
-	uint32_t dro;
+	uint32_t dro, product_id, wafer_tid;
+
+	node = fdt_path_offset(blob, "/");
+	if (node < 0) {
+		pr_err("Can't find root node!\n");
+		return -EINVAL;
+	}
+
+	get_chipinfo_from_efuse(&product_id, &wafer_tid);
+	product_id = cpu_to_fdt32(product_id);
+	wafer_tid = cpu_to_fdt32(wafer_tid);
+	fdt_setprop(blob, node, "product-id", &product_id, sizeof(product_id));
+	fdt_setprop(blob, node, "wafer-id", &wafer_tid, sizeof(wafer_tid));
 
 	node = fdt_path_offset(blob, "/cpus");
 	if (node < 0) {
@@ -1048,7 +1097,7 @@ static int ft_board_cpu_fixup(void *blob, struct bd_info *bd)
 
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
-	int node;
+	struct fdt_memory mem;
 	static const struct node_info nodes[] = {
 		{ "spacemit,k1x-qspi", MTD_DEV_TYPE_NOR, },  /* SPI flash */
 	};
@@ -1059,11 +1108,12 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 
 	if (CONFIG_IS_ENABLED(FDT_SIMPLEFB)) {
-		node = fdt_node_offset_by_compatible(blob, -1, "simple-framebuffer");
-		if (node < 0)
-			fdt_simplefb_add_node(blob);
+		/* reserved with no-map tag the video buffer */
+		mem.start = gd->video_bottom;
+		mem.end = gd->video_top - 1;
 
-		fdt_simplefb_enable_and_mem_rsv(blob);
+		fdtdec_add_reserved_memory(blob, "framebuffer", &mem, NULL, 0, NULL,
+			FDTDEC_RESERVED_MEMORY_NO_MAP);
 	}
 
 	ft_board_cpu_fixup(blob, bd);

@@ -388,14 +388,14 @@ int get_part_info(struct blk_desc *dev_desc, const char *name,
 
 
 /**
- * mmc_blk_write() - Write/erase MMC in chunks of MAX_BLK_WRITE
+ * _blk_write() - Write/erase blk dev in chunks of MAX_BLK_WRITE
  *
  * @block_dev: Pointer to block device
  * @start: First block to write/erase
  * @blkcnt: Count of blocks
  * @buffer: Pointer to data buffer for write or NULL for erase
  */
-static __maybe_unused lbaint_t mmc_blk_write(struct blk_desc *block_dev, lbaint_t start,
+static __maybe_unused lbaint_t _blk_write(struct blk_desc *block_dev, lbaint_t start,
 			lbaint_t blkcnt, const void *buffer)
 {
 	lbaint_t blk = start;
@@ -423,7 +423,6 @@ int blk_write_raw_image(struct blk_desc *dev_desc,
 		struct disk_partition *info, const char *part_name,
 		void *buffer, u32 download_bytes)
 {
-#ifdef CONFIG_MMC
 	lbaint_t blkcnt;
 	lbaint_t blks;
 
@@ -438,7 +437,7 @@ int blk_write_raw_image(struct blk_desc *dev_desc,
 
 	puts("Flashing Raw Image\n");
 
-	blks = mmc_blk_write(dev_desc, info->start, blkcnt, buffer);
+	blks = _blk_write(dev_desc, info->start, blkcnt, buffer);
 
 	if (blks != blkcnt) {
 		printf("failed writing to device %d\n", dev_desc->devnum);
@@ -448,10 +447,6 @@ int blk_write_raw_image(struct blk_desc *dev_desc,
 	printf("........ wrote " LBAFU " bytes to '%s'\n", \
 		blkcnt * info->blksz,part_name);
 	return RESULT_OK;
-#else
-	printf("not mmc dev found\n");
-	return RESULT_FAIL;
-#endif
 }
 
 int mtd_write_raw_image(struct mtd_info *mtd, const char *part_name, void *buffer, u32 download_bytes)
