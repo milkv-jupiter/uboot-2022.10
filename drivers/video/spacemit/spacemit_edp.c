@@ -162,8 +162,7 @@ void Reset_LT8911EXB(struct udevice *dev)
 	dm_gpio_set_value(&priv->reset_gpio, 0);
 	mdelay(50);
 	dm_gpio_set_value(&priv->reset_gpio, 1);
-	mdelay(150);
-
+	mdelay(100);
 }
 
 void LT8911EX_ChipID(struct udevice *dev)                                          // read Chip ID
@@ -271,21 +270,16 @@ static int lt8911exb_i2c_test(struct udevice *dev)                            //
 
     while(retry++ < 3) {
         ret = edp_panel_i2c_write(dev, 0xff, 0x81);
-
         if(ret < 0) {
             pr_info("LT8911EXB i2c test write addr:0xff failed\n");
             continue;
         }
-        edp_panel_i2c_read(dev, 0xff, &chip_id_l);
 
         ret = edp_panel_i2c_write(dev, 0x08, 0x7f);
-
         if(ret < 0) {
             pr_info("LT8911EXB i2c test write addr:0x08 failed\n");
             continue;
         }
-        edp_panel_i2c_read(dev, 0x01, &chip_id_m);
-        pr_debug("LT8911EXB i2c test success chipid: 0x%x,0x%x\n", chip_id_m, chip_id_l);
 
         edp_panel_i2c_read(dev, 0x00, &chip_id_l);
         edp_panel_i2c_read(dev, 0x01, &chip_id_m);
@@ -1072,7 +1066,6 @@ static int edp_panel_enable_backlight(struct udevice *dev)
 
 	PCR_Status(dev);			// just for Check PCR CLK
 
-	dm_gpio_set_value(&priv->enable_gpio, 1);
 	dm_gpio_set_value(&priv->bl_gpio, 1);
 
 	return 0;
@@ -1129,6 +1122,12 @@ static int edp_panel_probe(struct udevice *dev)
 
 	dm_gpio_set_value(&priv->standby_gpio, 1);
 	mdelay(50);
+	dm_gpio_set_value(&priv->standby_gpio, 0);
+	mdelay(50);
+	dm_gpio_set_value(&priv->standby_gpio, 1);
+	mdelay(100);
+
+	dm_gpio_set_value(&priv->enable_gpio, 1);
 
 	Reset_LT8911EXB(dev);
 

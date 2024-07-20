@@ -1112,8 +1112,7 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		mem.start = gd->video_bottom;
 		mem.end = gd->video_top - 1;
 
-		fdtdec_add_reserved_memory(blob, "framebuffer", &mem, NULL, 0, NULL,
-			FDTDEC_RESERVED_MEMORY_NO_MAP);
+		fdtdec_add_reserved_memory(blob, "framebuffer", &mem, NULL, 0, NULL, 0);
 	}
 
 	ft_board_cpu_fixup(blob, bd);

@@ -30,6 +30,51 @@
 #include <nvme.h>
 #include <watchdog.h>
 
+
+#define SUCCESS_BANNER \
+	"\r\n" \
+	"\r\n" \
+	"\tPPPPPPPPPPPPPPPPP        AAA                 SSSSSSSSSSSSSSS    SSSSSSSSSSSSSSS  \r\n" \
+	"\tP::::::::::::::::P      A:::A              SS:::::::::::::::S SS:::::::::::::::S \r\n" \
+	"\tP::::::PPPPPP:::::P    A:::::A            S:::::SSSSSS::::::SS:::::SSSSSS::::::S \r\n" \
+	"\tPP:::::P     P:::::P  A:::::::A           S:::::S     SSSSSSSS:::::S     SSSSSSS \r\n" \
+	"\t  P::::P     P:::::P A:::::::::A          S:::::S            S:::::S             \r\n" \
+	"\t  P::::P     P:::::PA:::::A:::::A         S:::::S            S:::::S             \r\n" \
+	"\t  P::::PPPPPP:::::PA:::::A A:::::A         S::::SSSS          S::::SSSS          \r\n" \
+	"\t  P:::::::::::::PPA:::::A   A:::::A         SS::::::SSSSS      SS::::::SSSSS     \r\n" \
+	"\t  P::::PPPPPPPPP A:::::A     A:::::A          SSS::::::::SS      SSS::::::::SS   \r\n" \
+	"\t  P::::P        A:::::AAAAAAAAA:::::A            SSSSSS::::S        SSSSSS::::S  \r\n" \
+	"\t  P::::P       A:::::::::::::::::::::A                S:::::S            S:::::S \r\n" \
+	"\t  P::::P      A:::::AAAAAAAAAAAAA:::::A               S:::::S            S:::::S \r\n" \
+	"\tPP::::::PP   A:::::A             A:::::A  SSSSSSS     S:::::SSSSSSSS     S:::::S \r\n" \
+	"\tP::::::::P  A:::::A               A:::::A S::::::SSSSSS:::::SS::::::SSSSSS:::::S \r\n" \
+	"\tP::::::::P A:::::A                 A:::::AS:::::::::::::::SS S:::::::::::::::SS  \r\n" \
+	"\tPPPPPPPPPPAAAAAAA                   AAAAAAASSSSSSSSSSSSSSS    SSSSSSSSSSSSSSS    \r\n" \
+	"\r\n" \
+	"\r\n"
+
+#define FAIL_BANNER \
+	"\r\n" \
+	"\r\n" \
+	"\tFFFFFFFFFFFFFFFFFFFFFF      AAA               IIIIIIIIIILLLLLLLLLLL             \r\n" \
+	"\tF::::::::::::::::::::F     A:::A              I::::::::IL:::::::::L             \r\n" \
+	"\tF::::::::::::::::::::F    A:::::A             I::::::::IL:::::::::L             \r\n" \
+	"\tFF::::::FFFFFFFFF::::F   A:::::::A            II::::::IILL:::::::LL             \r\n" \
+	"\t  F:::::F       FFFFFF  A:::::::::A             I::::I    L:::::L               \r\n" \
+	"\t  F:::::F              A:::::A:::::A            I::::I    L:::::L               \r\n" \
+	"\t  F::::::FFFFFFFFFF   A:::::A A:::::A           I::::I    L:::::L               \r\n" \
+	"\t  F:::::::::::::::F  A:::::A   A:::::A          I::::I    L:::::L               \r\n" \
+	"\t  F:::::::::::::::F A:::::A     A:::::A         I::::I    L:::::L               \r\n" \
+	"\t  F::::::FFFFFFFFFFA:::::AAAAAAAAA:::::A        I::::I    L:::::L               \r\n" \
+	"\t  F:::::F         A:::::::::::::::::::::A       I::::I    L:::::L               \r\n" \
+	"\t  F:::::F        A:::::AAAAAAAAAAAAA:::::A      I::::I    L:::::L         LLLLLL\r\n" \
+	"\tFF:::::::FF     A:::::A             A:::::A   II::::::IILL:::::::LLLLLLLLL:::::L\r\n" \
+	"\tF::::::::FF    A:::::A               A:::::A  I::::::::IL::::::::::::::::::::::L\r\n" \
+	"\tF::::::::FF   A:::::A                 A:::::A I::::::::IL::::::::::::::::::::::L\r\n" \
+	"\tFFFFFFFFFFF  AAAAAAA                   AAAAAAAIIIIIIIIIILLLLLLLLLLLLLLLLLLLLLLLL\r\n" \
+	"\r\n" \
+	"\r\n"
+
 static int dev_emmc_num = -1;
 static int dev_sdio_num = -1;
 static u32 bootfs_part_index = 0;
@@ -356,9 +401,11 @@ static int load_from_device(struct cmd_tbl *cmdtp, char *load_str,
 void recovery_show_result(struct flash_dev *fdev, int ret)
 {
 	if (ret) {
-		printf("!!!!!!!!!!!!!!!!!!! recovery flash false !!!!!!!!!!!!!!!!!!!\n");
+		printf("!!!!!!!!!!!!!!!!!!! recovery flash failed !!!!!!!!!!!!!!!!!!!\n");
+		puts(FAIL_BANNER);
 	} else {
 		printf("################### recovery flash success ###################\n");
+		puts(SUCCESS_BANNER);
 	}
 
 	/*free the malloc paramenter*/
