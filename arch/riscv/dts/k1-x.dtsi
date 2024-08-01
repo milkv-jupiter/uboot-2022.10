@@ -519,6 +519,26 @@
 			status = "disabled";
                 };
 
+		pwm0: pwm@d401a000 {
+			compatible = "spacemit,k1x-pwm";
+			reg = <0x0 0xd401a000 0x0 0x10>;
+			#pwm-cells = <2>;
+			clocks = <&ccu CLK_PWM0>;
+			resets = <&reset RESET_PWM0>;
+			k1x,pwm-disable-fd = <1>;
+			status = "disabled";
+		};
+
+		pwm14: pwm@d4021800 {
+			compatible = "spacemit,k1x-pwm";
+			reg = <0x0 0xd4021800 0x0 0x10>;
+			#pwm-cells = <2>;
+			clocks = <&ccu CLK_PWM14>;
+			resets = <&reset RESET_PWM14>;
+			k1x,pwm-disable-fd;
+			status = "disabled";
+		};
+
 		pcie0_rc: pcie@ca000000 {
 			compatible = "k1x,dwc-pcie";
 			reg = <0x0 0xca000000 0x0 0x00001000>, /* dbi */

@@ -61,7 +61,6 @@ enum board_boot_mode get_boot_pin_select(void)
 	pr_debug("boot_select:%x\n", boot_select);
 
 	/*select spl boot device:
- 
 		 b'(bit1)(bit0)
 	emmc:b'00, //BOOT_STRAP_BIT_EMMC
 	nor :b'10, //BOOT_STRAP_BIT_NOR
@@ -744,6 +743,7 @@ void refresh_config_info(u8 *eeprom_data)
 		char *m_name;
 	} info[] = {
 		{ TLV_CODE_PRODUCT_NAME,   false, "product_name"},
+		{ TLV_CODE_PART_NUMBER,    false, "part#"},
 		{ TLV_CODE_SERIAL_NUMBER,  false, "serial#"},
 		{ TLV_CODE_MANUF_DATE,     false, "manufacture_date"},
 		{ TLV_CODE_MANUF_NAME,     false, "manufacturer"},
@@ -1095,6 +1095,24 @@ static int ft_board_cpu_fixup(void *blob, struct bd_info *bd)
 	return 0;
 }
 
+static int ft_board_info_fixup(void *blob, struct bd_info *bd)
+{
+	int node;
+	const char *part_number;
+
+	node = fdt_path_offset(blob, "/");
+	if (node < 0) {
+		pr_err("Can't find root node!\n");
+		return -EINVAL;
+	}
+
+	part_number = env_get("part#");
+	if (NULL != part_number)
+		fdt_setprop(blob, node, "part-number", part_number, strlen(part_number));
+
+	return 0;
+}
+
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	struct fdt_memory mem;
@@ -1116,5 +1134,6 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	}
 
 	ft_board_cpu_fixup(blob, bd);
+	ft_board_info_fixup(blob, bd);
 	return 0;
 }

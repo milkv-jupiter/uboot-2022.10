@@ -155,11 +155,15 @@ struct spacemit_panel_priv {
 
 	struct gpio_desc dcp;
 	struct gpio_desc dcn;
+	struct gpio_desc avee;
+	struct gpio_desc avdd;
 	struct gpio_desc bl;
 	struct gpio_desc enable;
 	struct gpio_desc reset;
 	bool dcp_valid;
 	bool dcn_valid;
+	bool avee_valid;
+	bool avdd_valid;
 	bool bl_valid;
 	bool enable_valid;
 	bool reset_valid;

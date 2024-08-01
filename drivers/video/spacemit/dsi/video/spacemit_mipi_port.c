@@ -41,8 +41,10 @@ static bool __maybe_unused lcd_mipi_readid(struct lcd_mipi_tx_data *video_tx_cli
 
 		ret = spacemit_mipi_read_cmds(0, &dbuf, video_tx_client->panel_info->read_id_cmds,
 				 video_tx_client->panel_info->read_id_cmds_num);
-		if (ret)
+		if (ret) {
+			pr_info("%s failed!\n", __func__);
 			return false;
+		}
 		read_id[0] = dbuf.data[0];
 		read_id[1] = dbuf.data[1];
 		read_id[2] = dbuf.data[2];
@@ -84,9 +86,19 @@ static int lcd_mipi_dc_enable(bool power_on, struct spacemit_panel_priv *priv)
 			dm_gpio_set_value(&priv->dcp, 1);
 		if (priv->dcn_valid)
 			dm_gpio_set_value(&priv->dcn, 1);
+
+		if (priv->avee_valid)
+			dm_gpio_set_value(&priv->avee, 1);
+		if (priv->avdd_valid)
+			dm_gpio_set_value(&priv->avdd, 1);
 	} else {
 		if (priv->enable_valid)
 			dm_gpio_set_value(&priv->enable, 0);
+
+		if (priv->avee_valid)
+			dm_gpio_set_value(&priv->avee, 0);
+		if (priv->avdd_valid)
+			dm_gpio_set_value(&priv->avdd, 0);
 
 		if (priv->dcp_valid)
 			dm_gpio_set_value(&priv->dcp, 0);
@@ -428,6 +440,10 @@ int lcd_mipi_probe(void)
 		tx_device_client.panel_type = LCD_EDP;
 		tx_device.panel_type = tx_device_client.panel_type;
 		lcd_lt8911ext_edp_1080p_init();
+	} else if(strcmp("icnl9951r", priv->panel_name) == 0) {
+		tx_device_client.panel_type = LCD_MIPI;
+		tx_device.panel_type = tx_device_client.panel_type;
+		lcd_icnl9951r_init();
 	} else {
 		// lcd_icnl9911c_init();
 		lcd_gx09inx101_init();
@@ -475,6 +491,27 @@ static int spacemit_panel_of_to_plat(struct udevice *dev)
 	} else {
 		priv->dcn_valid = true;
 	}
+
+	ret = gpio_request_by_name(dev, "avee-gpios", 0, &priv->avee,
+				   GPIOD_IS_OUT);
+	if (ret) {
+		pr_debug("%s: Warning: cannot get avee GPIO: ret=%d\n",
+		      __func__, ret);
+		priv->avee_valid = false;
+	} else {
+		priv->avee_valid = true;
+	}
+
+	ret = gpio_request_by_name(dev, "avdd-gpios", 0, &priv->avdd,
+				   GPIOD_IS_OUT);
+	if (ret) {
+		pr_debug("%s: Warning: cannot get avdd GPIO: ret=%d\n",
+		      __func__, ret);
+		priv->avdd_valid = false;
+	} else {
+		priv->avdd_valid = true;
+	}
+
 
 	ret = gpio_request_by_name(dev, "bl-gpios", 0, &priv->bl,
 				   GPIOD_IS_OUT);

@@ -112,6 +112,12 @@ config PWM_SUNXI
 	  This PWM is found on H3, A64 and other Allwinner SoCs. It supports a
 	  programmable period and duty cycle. A 16-bit counter is used.
 
+config PWM_PXA
+	bool "Enable support for PXA PWM"
+	depends on DM_PWM
+	help
+	  This PWM is found on Spacemit-K1x and other SoCs.
+
 config PWM_TI_EHRPWM
 	bool "Enable support for EHRPWM PWM"
 	depends on DM_PWM && ARCH_OMAP2PLUS

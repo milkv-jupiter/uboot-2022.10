@@ -145,6 +145,15 @@
 				algo = "crc32";
 			};
 		};
+		fdt_15 {
+			description = "k1-x_MUSE-Paper";
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("../dtb/k1-x_MUSE-Paper.dtb");
+			hash-1 {
+				algo = "crc32";
+			};
+		};
 	};
 
 	configurations {
@@ -218,6 +227,11 @@
 			description = "k1-x_MUSE-Card";
 			loadables = "uboot";
 			fdt = "fdt_14";
+		};
+		conf_15 {
+			description = "k1-x_MUSE-Paper";
+			loadables = "uboot";
+			fdt = "fdt_15";
 		};
 	};
 };

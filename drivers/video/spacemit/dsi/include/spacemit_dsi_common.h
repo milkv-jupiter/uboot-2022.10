@@ -139,6 +139,7 @@ int spacemit_dsi_probe(void);
 int lcd_mipi_probe(void);
 
 int lcd_icnl9911c_init(void);
+int lcd_icnl9951r_init(void);
 int lcd_gx09inx101_init(void);
 int lcd_lt8911ext_edp_1080p_init(void);
 
