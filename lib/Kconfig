@@ -154,6 +154,13 @@ config SYS_HZ
 	  get_timer() must operate in milliseconds and this option must be
 	  set to 1000.
 
+config PRINT_TIMESTAMP
+	bool "Show timing information on printf"
+	depends on TARGET_SPACEMIT_K1X
+	help
+	  Selecting this option causes time stamps of the printf()
+	  messages to be added to the output at the console.
+
 config SPL_USE_TINY_PRINTF
 	bool "Enable tiny printf() version in SPL"
 	depends on SPL

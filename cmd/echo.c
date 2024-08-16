@@ -23,14 +23,14 @@ static int do_echo(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	for (; i < argc; ++i) {
 		if (space) {
-			putc(' ');
+			printf(" ");
 		}
-		puts(argv[i]);
+		printf("%s", argv[i]);
 		space = true;
 	}
 
 	if (newline)
-		putc('\n');
+		printf("\n");
 
 	return 0;
 }

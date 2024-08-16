@@ -977,23 +977,23 @@ int console_init_f(void)
 void stdio_print_current_devices(void)
 {
 	/* Print information */
-	puts("In:    ");
+	printf("In:    ");
 	if (stdio_devices[stdin] == NULL) {
-		puts("No input devices available!\n");
+		printf("No input devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stdin]->name);
 	}
 
-	puts("Out:   ");
+	printf("Out:   ");
 	if (stdio_devices[stdout] == NULL) {
-		puts("No output devices available!\n");
+		printf("No output devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stdout]->name);
 	}
 
-	puts("Err:   ");
+	printf("Err:   ");
 	if (stdio_devices[stderr] == NULL) {
-		puts("No error devices available!\n");
+		printf("No error devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stderr]->name);
 	}

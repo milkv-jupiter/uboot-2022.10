@@ -329,7 +329,7 @@ static int initr_flash(void)
 	if (!is_flash_available())
 		return 0;
 
-	puts("Flash: ");
+	printf("Flash: ");
 
 	if (board_flash_wp_on())
 		printf("Uninitialized - Write Protect On\n");
@@ -379,7 +379,7 @@ static int initr_flash(void)
 /* go init the NAND */
 static int initr_nand(void)
 {
-	puts("NAND:  ");
+	printf("NAND:  ");
 	nand_init();
 	printf("%lu MiB\n", nand_size() / 1024);
 	return 0;
@@ -390,7 +390,7 @@ static int initr_nand(void)
 /* go init the NAND */
 static int initr_onenand(void)
 {
-	puts("NAND:  ");
+	printf("NAND:  ");
 	onenand_init();
 	return 0;
 }
@@ -399,7 +399,7 @@ static int initr_onenand(void)
 #ifdef CONFIG_MMC
 static int initr_mmc(void)
 {
-	puts("MMC:   ");
+	printf("MMC:   ");
 	mmc_initialize(gd->bd);
 	return 0;
 }
@@ -408,7 +408,7 @@ static int initr_mmc(void)
 #ifdef CONFIG_PVBLOCK
 static int initr_pvblock(void)
 {
-	puts("PVBLOCK: ");
+	printf("PVBLOCK: ");
 	pvblock_init();
 	return 0;
 }
@@ -466,7 +466,7 @@ static int initr_malloc_bootparams(void)
 {
 	gd->bd->bi_boot_params = (ulong)malloc(CONFIG_SYS_BOOTPARAMS_LEN);
 	if (!gd->bd->bi_boot_params) {
-		puts("WARNING: Cannot allocate space for boot parameters\n");
+		printf("WARNING: Cannot allocate space for boot parameters\n");
 		return -ENOMEM;
 	}
 	return 0;
@@ -488,9 +488,9 @@ static int initr_status_led(void)
 #if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
 static int initr_scsi(void)
 {
-	puts("SCSI:  ");
+	printf("SCSI:  ");
 	scsi_init();
-	puts("\n");
+	printf("\n");
 
 	return 0;
 }
@@ -499,7 +499,7 @@ static int initr_scsi(void)
 #ifdef CONFIG_CMD_NET
 static int initr_net(void)
 {
-	puts("Net:   ");
+	printf("Net:   ");
 	eth_initialize();
 #if defined(CONFIG_RESET_PHY_R)
 	debug("Reset Ethernet PHY\n");
@@ -520,7 +520,7 @@ static int initr_post(void)
 #if defined(CONFIG_IDE) && !defined(CONFIG_BLK)
 static int initr_ide(void)
 {
-	puts("IDE:   ");
+	printf("IDE:   ");
 #if defined(CONFIG_START_IDE)
 	if (board_start_ide())
 		ide_init();

@@ -29,6 +29,7 @@
 extern u32 ddr_cs_num;
 extern const char *ddr_type;
 extern int ddr_freq_change(u32 data_rate);
+extern void qos_set_default(void);
 
 static int test_pattern(fdt_addr_t base, fdt_size_t size)
 {
@@ -169,6 +170,9 @@ static int spacemit_ddr_probe(struct udevice *dev)
 		pr_err("dram init failed!\n");
 		return -EIO;
 	}
+#ifdef CONFIG_DDR_QOS
+	qos_set_default();
+#endif
 	pr_info("dram init done\n");
 
 	return 0;

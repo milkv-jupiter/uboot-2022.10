@@ -1339,7 +1339,7 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
 			if (fit_image_check_hash(fit, noffset, data, size,
 						 &err_msg))
 				goto error;
-			puts("+ ");
+			printf("+ ");
 		} else if (FIT_IMAGE_ENABLE_VERIFY && verify_all &&
 				!strncmp(name, FIT_SIG_NODENAME,
 					strlen(FIT_SIG_NODENAME))) {
@@ -1353,9 +1353,9 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
 			 * fit_image_verify_required_sigs() above.
 			 */
 			if (ret)
-				puts("- ");
+				printf("- ");
 			else
-				puts("+ ");
+				printf("+ ");
 		}
 	}
 
@@ -1958,12 +1958,12 @@ static int fit_image_select(const void *fit, int rd_noffset, int verify)
 	fit_image_print(fit, rd_noffset, "   ");
 
 	if (verify) {
-		puts("   Verifying Hash Integrity ... ");
+		printf("   Verifying Hash Integrity ... ");
 		if (!fit_image_verify(fit, rd_noffset)) {
-			puts("Bad Data Hash\n");
+			printf("Bad Data Hash\n");
 			return -EACCES;
 		}
-		puts("OK\n");
+		printf("OK\n");
 	}
 
 	return 0;
@@ -2085,7 +2085,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 							fit_uname_config);
 		}
 		if (cfg_noffset < 0) {
-			puts("Could not find configuration node\n");
+			printf("Could not find configuration node\n");
 			bootstage_error(bootstage_id +
 					BOOTSTAGE_SUB_NO_UNIT_NAME);
 			return -ENOENT;
@@ -2098,14 +2098,14 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 			images->fit_uname_cfg = fit_base_uname_config;
 
 		if (FIT_IMAGE_ENABLE_VERIFY && images->verify) {
-			puts("   Verifying Hash Integrity ... ");
+			printf("   Verifying Hash Integrity ... ");
 			if (fit_config_verify(fit, cfg_noffset)) {
-				puts("Bad Data Hash\n");
+				printf("Bad Data Hash\n");
 				bootstage_error(bootstage_id +
 					BOOTSTAGE_SUB_HASH);
 				return -EACCES;
 			}
-			puts("OK\n");
+			printf("OK\n");
 		}
 
 		bootstage_mark(BOOTSTAGE_ID_FIT_CONFIG);
@@ -2131,7 +2131,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	bootstage_mark(bootstage_id + BOOTSTAGE_SUB_CHECK_ARCH);
 	if (!tools_build() && IS_ENABLED(CONFIG_SANDBOX)) {
 		if (!fit_image_check_target_arch(fit, noffset)) {
-			puts("Unsupported Architecture\n");
+			printf("Unsupported Architecture\n");
 			bootstage_error(bootstage_id + BOOTSTAGE_SUB_CHECK_ARCH);
 			return -ENOEXEC;
 		}
@@ -2189,12 +2189,12 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 
 	/* Decrypt data before uncompress/move */
 	if (IS_ENABLED(CONFIG_FIT_CIPHER) && IMAGE_ENABLE_DECRYPT) {
-		puts("   Decrypting Data ... ");
+		printf("   Decrypting Data ... ");
 		if (fit_image_uncipher(fit, noffset, &buf, &size)) {
-			puts("Error\n");
+			printf("Error\n");
 			return -EACCES;
 		}
-		puts("OK\n");
+		printf("OK\n");
 	}
 
 	/* perform any post-processing on the image data */
@@ -2267,12 +2267,12 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	}
 
 	if (image_type == IH_TYPE_RAMDISK && comp != IH_COMP_NONE)
-		puts("WARNING: 'compression' nodes for ramdisks are deprecated,"
+		printf("WARNING: 'compression' nodes for ramdisks are deprecated,"
 		     " please fix your .its file!\n");
 
 	/* verify that image data is a proper FDT blob */
 	if (image_type == IH_TYPE_FLATDT && fdt_check_header(loadbuf)) {
-		puts("Subimage data is not a FDT");
+		printf("Subimage data is not a FDT");
 		return -ENOEXEC;
 	}
 

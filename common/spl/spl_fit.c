@@ -257,7 +257,7 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
 	if (IS_ENABLED(CONFIG_SPL_FPGA) ||
 	    (IS_ENABLED(CONFIG_SPL_OS_BOOT) && IS_ENABLED(CONFIG_SPL_GZIP))) {
 		if (fit_image_get_type(fit, node, &type))
-			puts("Cannot get image type.\n");
+			printf("Cannot get image type.\n");
 		else
 			pr_debug("%s ", genimg_get_type_name(type));
 	}
@@ -314,7 +314,7 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
 	} else {
 		/* Embedded data */
 		if (fit_image_get_data(fit, node, &data, &length)) {
-			puts("Cannot get image data/size\n");
+			printf("Cannot get image data/size\n");
 			return -ENOENT;
 		}
 		pr_debug("Embedded data: dst=%lx, size=%lx\n", load_addr,
@@ -328,7 +328,7 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
 		if (!fit_image_verify_with_data(fit, node, gd_fdt_blob(), src,
 						length))
 			return -EPERM;
-		puts("OK\n");
+		printf("OK\n");
 	}
 
 	if (CONFIG_IS_ENABLED(FIT_IMAGE_POST_PROCESS))
@@ -338,7 +338,7 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
 	if (IS_ENABLED(CONFIG_SPL_GZIP) && image_comp == IH_COMP_GZIP) {
 		size = length;
 		if (gunzip(load_ptr, CONFIG_SYS_BOOTM_LEN, src, &size)) {
-			puts("Uncompressing error\n");
+			printf("Uncompressing error\n");
 			return -EIO;
 		}
 		length = size;
@@ -613,7 +613,7 @@ static int spl_fit_upload_fpga(struct spl_fit_info *ctx, int node,
 		return ret;
 	}
 
-	puts("FPGA image loaded from FIT\n");
+	printf("FPGA image loaded from FIT\n");
 
 	return 0;
 }
@@ -690,7 +690,7 @@ static int spl_simple_fit_parse(struct spl_fit_info *ctx)
 		       fit_get_name(ctx->fit, ctx->conf_node, NULL));
 		if (fit_config_verify(ctx->fit, ctx->conf_node))
 			return -EPERM;
-		puts("OK\n");
+		printf("OK\n");
 	}
 
 	/* find the node holding the images information */

@@ -35,5 +35,13 @@ config SYS_SPD_BUS_NUM
 	depends on DDR_SPD || SYS_I2C_LEGACY || SPL_SYS_I2C_LEGACY
 	default 0
 
+config DDR_QOS
+	bool "DDR Quality of Service (QoS) support"
+	help
+	  For memory controllers that support QoS, set different priority for
+	  different master, that ensure all on-chip data flows can concurrently
+	  meet latency and bandwidth requirements while sharing the finite
+	  bandwidth of DDR memory.
+
 source "drivers/ddr/altera/Kconfig"
 source "drivers/ddr/imx/Kconfig"

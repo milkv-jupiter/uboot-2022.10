@@ -467,7 +467,7 @@ int eth_initialize(void)
 
 		if (!num_devices)
 			log_err("No ethernet found.\n");
-		putc('\n');
+		printf("\n");
 	}
 
 	return num_devices;

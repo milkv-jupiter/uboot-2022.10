@@ -458,7 +458,7 @@ static int spacemit_reset_deassert(struct reset_ctl *rst)
 static int spacemit_k1x_reset_probe(struct udevice *dev)
 {
 	struct spacemit_reset *reset = dev_get_priv(dev);
-	pr_info("[RESET]probe start \r\n");
+	pr_info("reset driver probe start \n");
 
 	reset->mpmu_base = (void __iomem *)dev_remap_addr_index(dev, 0);
 	if (!reset->mpmu_base) {
@@ -508,7 +508,7 @@ static int spacemit_k1x_reset_probe(struct udevice *dev)
 		goto out;
 	}
 	reset->signals = k1x_reset_signals;
-	pr_info("[RESET]probe finish \r\n");
+	pr_info("reset driver probe finish \n");
 out:
 	return 0;
 }

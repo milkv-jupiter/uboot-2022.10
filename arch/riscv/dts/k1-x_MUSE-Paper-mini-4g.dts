@@ -8,7 +8,7 @@
 #include "k1-x_spm8821.dtsi"
 
 / {
-	model = "spacemit k1-x MUSE-Card board";
+	model = "MUSE-PAPER-MINI-4G";
 
 	aliases {
 		efuse_power = &ldo_31;
@@ -27,13 +27,13 @@
 	usb2hub: usb2hub {
 		compatible = "spacemit,usb-hub";
 		vbus-gpios = <&gpio 123 0>;	/* for usb2 hub output vbus */
-		status = "okay";
+		status = "disabled";
 	};
 
 	usb3hub: usb3hub {
 		compatible = "spacemit,usb-hub";
 		vbus-gpios = <&gpio 79 0>;	/* gpio_79 for usb3 pwren */
-		status = "okay";
+		status = "disabled";
 	};
 
 };
@@ -75,13 +75,13 @@
 
 &i2c4 {
 	clock-frequency = <400000>;
-	status = "okay";
+	status = "disabled";
 };
 
 &i2c5 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c5_0>;
-	status = "okay";
+	status = "disabled";
 };
 
 &i2c6 {
@@ -144,29 +144,29 @@
 };
 
 &udc {
-	status = "okay";
+	status = "disabled";
 };
 
 &usbphy1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &ehci1 {
 	vbus-supply = <&usb2hub>;
-	status = "okay";
+	status = "disabled";
 };
 
 &usb2phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &combphy {
-	status = "okay";
+	status = "disabled";
 };
 
 
 &usbdrd3 {
-	status = "okay";
+	status = "disabled";
 	vbus-supply = <&usb3hub>;
 	dwc3@c0a00000 {
 		dr_mode = "host";
@@ -190,42 +190,14 @@
 	status = "okay";
 };
 
-&eth0 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gmac0>;
-
-	phy-reset-pin = <110>;
-
-	clk_tuning_enable;
-	clk-tuning-by-delayline;
-	tx-phase = <90>;
-	rx-phase = <73>;
-
-	phy-mode = "rgmii";
-	phy-addr = <1>;
-	phy-handle = <&rgmii>;
-
-	ref-clock-from-phy;
-
-	mdio {
-		#address-cells = <0x1>;
-		#size-cells = <0x0>;
-		rgmii: phy@0 {
-			compatible = "ethernet-phy-id001c.c916";
-			device_type = "ethernet-phy";
-			reg = <0x1>;
-		};
-	};
-};
-
-&pcie0_rc {
-	status = "disabled";
-};
-
-&pcie1_rc {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcie1_3>;
+/* eMMC */
+&sdhci2 {
+	bus-width = <8>;
+	non-removable;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	sdh-phy-module = <1>;
+	clk-src-freq = <375000000>;
 	status = "okay";
 };
 
@@ -248,24 +220,18 @@
 	status = "okay";
 };
 
-&dpu {
-	status = "okay";
+&ldo_27 {
+	regulator-init-microvolt = <1200000>;
+	regulator-boot-on;
+	regulator-state-mem {
+			regulator-off-in-suspend;
+	};
 };
 
-&hdmi {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hdmi_0>;
-	status = "okay";
-};
-
-&mipi_dsi {
-	status = "disabled";
-};
-
-&panel {
-	dcp-gpios = <&gpio 40 0>;
-	dcn-gpios = <&gpio 83 0>;
-	bl-gpios = <&gpio 44 0>;
-	reset-gpios = <&gpio 41 0>;
-	status = "disabled";
+&ldo_33 {
+	regulator-init-microvolt = <1800000>;
+	regulator-boot-on;
+	regulator-state-mem {
+			regulator-off-in-suspend;
+	};
 };

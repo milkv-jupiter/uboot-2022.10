@@ -194,7 +194,7 @@ static void write_raw_image(struct blk_desc *dev_desc,
 		return;
 	}
 
-	puts("Flashing Raw Image\n");
+	printf("Flashing Raw Image\n");
 
 	blks = fb_mmc_blk_write(dev_desc, info->start, blkcnt, buffer);
 
@@ -359,7 +359,7 @@ static int fb_mmc_update_zimage(struct blk_desc *dev_desc,
 	struct disk_partition info;
 	int res;
 
-	puts("Flashing zImage\n");
+	printf("Flashing zImage\n");
 
 	/* Get boot partition info */
 	res = part_get_info_by_name(dev_desc, BOOT_PARTITION_NAME, &info);
@@ -441,7 +441,7 @@ static int fb_mmc_update_zimage(struct blk_desc *dev_desc,
 		return -1;
 	}
 
-	puts("........ zImage was updated in boot partition\n");
+	printf("........ zImage was updated in boot partition\n");
 	fastboot_okay(NULL, response);
 	return 0;
 }

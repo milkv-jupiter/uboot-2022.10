@@ -1125,7 +1125,7 @@ static int emac_probe(struct udevice *dev)
 
     ret = emac_probe_resources_core(dev);
     if (ret < 0) {
-        pr_err("emac_probe_resources_core() failed: %d", ret);
+        pr_err("emac_probe_resources_core() failed: %d\n", ret);
         return ret;
     }
 
@@ -1145,7 +1145,7 @@ static int emac_probe(struct udevice *dev)
 
     priv->mii = mdio_alloc();
     if (!priv->mii) {
-        pr_err("mdio_alloc() failed");
+        pr_err("mdio_alloc() failed\n");
         ret = -ENOMEM;
         goto err_remove_resources_core;
     }
@@ -1156,7 +1156,7 @@ static int emac_probe(struct udevice *dev)
 
     ret = mdio_register(priv->mii);
     if (ret < 0) {
-        pr_err("mdio_register() failed: %d", ret);
+        pr_err("mdio_register() failed: %d\n", ret);
         goto err_free_mdio;
     }
 
@@ -1167,14 +1167,14 @@ static int emac_probe(struct udevice *dev)
 #ifdef CONFIG_GPIO  /* gpio driver is not ready for fpga platform! */
     ret = gpio_request(priv->phy_reset_gpio, "phy-reset-pin");
     if (ret < 0) {
-        pr_err("gpio_request_by_name(phy reset) failed: %d", ret);
+        pr_err("gpio_request_by_name(phy reset) failed: %d\n", ret);
         goto err_free_mdio;
     }
 
     if (priv->ldo_gpio >= 0) {
         ret = gpio_request(priv->ldo_gpio, "ldo-pwr-pin");
         if (ret < 0) {
-            pr_err("gpio_request_by_name(ldo pwr) failed: %d", ret);
+            pr_err("gpio_request_by_name(ldo pwr) failed: %d\n", ret);
             goto err_free_gpio;
         }
         gpio_direction_output(priv->ldo_gpio, 1);

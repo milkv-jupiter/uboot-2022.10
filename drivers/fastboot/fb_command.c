@@ -368,9 +368,9 @@ void fastboot_data_download(const void *fastboot_data,
 	now_dot_num = fastboot_bytes_received / BYTES_PER_DOT;
 
 	if (pre_dot_num != now_dot_num) {
-		putc('.');
+		printf(".");
 		if (!(now_dot_num % 74))
-			putc('\n');
+			printf("\n");
 	}
 	*response = '\0';
 }
@@ -411,9 +411,9 @@ void fastboot_data_upload(const void *fastboot_data,
 	now_dot_num = fastboot_bytes_received / BYTES_PER_DOT;
 
 	if (pre_dot_num != now_dot_num) {
-		putc('.');
+		printf(".");
 		if (!(now_dot_num % 74))
-			putc('\n');
+			printf("\n");
 	}
 	*response = '\0';
 }
@@ -430,7 +430,8 @@ void fastboot_data_complete(char *response)
 {
 	/* Download complete. Respond with "OKAY" */
 	fastboot_okay(NULL, response);
-	pr_info("\ndownloading/uploading of %d bytes finished\n", fastboot_bytes_received);
+	pr_info("\n");
+	pr_info("downloading/uploading of %d bytes finished\n", fastboot_bytes_received);
 	image_size = fastboot_bytes_received;
 	env_set_hex("filesize", image_size);
 	fastboot_bytes_expected = 0;

@@ -618,7 +618,7 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 				flush_cache((unsigned long)*initrd_start,
 					    ALIGN(rd_len, ARCH_DMA_MINALIGN));
 			}
-			puts("OK\n");
+			printf("OK\n");
 		}
 	} else {
 		*initrd_start = 0;

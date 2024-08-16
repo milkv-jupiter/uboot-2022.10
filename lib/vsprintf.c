@@ -25,6 +25,7 @@
 #include <linux/err.h>
 #include <linux/types.h>
 #include <linux/string.h>
+#include <timer.h>
 
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
@@ -816,20 +817,36 @@ int printf(const char *fmt, ...)
 
 int vprintf(const char *fmt, va_list args)
 {
-	uint i;
+	uint i=0;
 	char printbuffer[CONFIG_SYS_PBSIZE];
+
+#ifdef CONFIG_PRINT_TIMESTAMP
+	u64 time = timer_early_get_count();
+	u32 seconds = time / RISCV_TIMER_FREQ;
+	u32 milliseconds = (time % RISCV_TIMER_FREQ) * 1000 / RISCV_TIMER_FREQ;
+	static char last_print_char = '\n';
+
+	if(last_print_char == '\n') {
+		i = snprintf(printbuffer, sizeof(printbuffer), "[%4u.%03u] ", seconds, milliseconds);
+	}
+#endif
 
 	/*
 	 * For this to work, printbuffer must be larger than
 	 * anything we ever want to print.
 	 */
-	i = vscnprintf(printbuffer, sizeof(printbuffer), fmt, args);
+	i += vscnprintf(&printbuffer[i], sizeof(printbuffer), fmt, args);
 
 	/* Handle error */
 	if (i <= 0)
 		return i;
 	/* Print the string */
 	puts(printbuffer);
+
+#ifdef CONFIG_PRINT_TIMESTAMP
+	/* record last print char */
+	last_print_char = printbuffer[i-1];
+#endif
 	return i;
 }
 #endif

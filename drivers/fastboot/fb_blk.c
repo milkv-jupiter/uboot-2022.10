@@ -119,7 +119,7 @@ static void write_raw_image(struct blk_desc *dev_desc,
 		return;
 	}
 
-	puts("Flashing Raw Image\n");
+	printf("Flashing Raw Image\n");
 
 	blks = fb_blk_write(dev_desc, info->start, blkcnt, buffer);
 

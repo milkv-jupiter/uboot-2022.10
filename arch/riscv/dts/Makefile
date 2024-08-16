@@ -13,6 +13,7 @@ dtb-$(CONFIG_TARGET_SPACEMIT_K1X) += k1-x_evb.dtb k1-x_deb2.dtb k1-x_deb1.dtb k1
 				     k1-x_MUSE-Pi.dtb k1-x_spl.dtb k1-x_milkv-jupiter.dtb \
 				     k1-x_MUSE-Book.dtb m1-x_milkv-jupiter.dtb \
 				     k1-x_lpi3a.dtb k1-x_MUSE-Card.dtb k1-x_MUSE-Paper.dtb \
+				     k1-x_MUSE-Paper-mini-4g.dtb
 
 include $(srctree)/scripts/Makefile.dts
 

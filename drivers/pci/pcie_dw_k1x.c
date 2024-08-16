@@ -667,7 +667,7 @@ static int pcie_dw_k1x_probe(struct udevice *dev)
 
 	ret = generic_phy_get_by_name(dev,  "pcie-phy0", &phy0);
 	if (ret) {
-		dev_err(dev, "Unable to get phy0");
+		dev_err(dev, "Unable to get phy0\n");
 	} else {
 		generic_phy_reset(&phy0);
 		generic_phy_init(&phy0);
@@ -676,7 +676,7 @@ static int pcie_dw_k1x_probe(struct udevice *dev)
 
 	ret = generic_phy_get_by_name(dev,  "pcie-phy1", &phy1);
 	if (ret) {
-		dev_err(dev, "Unable to get phy1");
+		dev_err(dev, "Unable to get phy1\n");
 	} else {
 		generic_phy_reset(&phy1);
 		generic_phy_init(&phy1);

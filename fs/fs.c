@@ -812,11 +812,11 @@ int do_load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
 
 	printf("%llu bytes read in %lu ms", len_read, time);
 	if (time > 0) {
-		puts(" (");
+		printf(" (");
 		print_size(div_u64(len_read, time) * 1000, "/s");
-		puts(")");
+		printf(")");
 	}
-	puts("\n");
+	printf("\n");
 
 	env_set_hex("fileaddr", addr);
 	env_set_hex("filesize", len_read);

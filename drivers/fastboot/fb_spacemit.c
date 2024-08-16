@@ -742,7 +742,7 @@ int compare_blk_image_val(struct blk_desc *dev_desc, u64 compare_val, lbaint_t p
 	}
 
 	for (int i = 0; i < div_times; i++) {
-		pr_info("\ndownload and flash div %d\n", i);
+		pr_info("download and flash div %d\n", i);
 		download_bytes = byte_remain > RECOVERY_LOAD_IMG_SIZE ? RECOVERY_LOAD_IMG_SIZE : byte_remain;
 
 		blk_size = (download_bytes + (blksz - 1)) / blksz;
@@ -760,7 +760,7 @@ int compare_blk_image_val(struct blk_desc *dev_desc, u64 compare_val, lbaint_t p
 
 	pr_info("get calculate value:%llx, compare calculate:%llx\n", calculate, compare_val);
 	time_start_flash = get_timer(time_start_flash);
-	pr_info("\ncompare over, use time:%lu ms\n\n", time_start_flash);
+	pr_info("compare over, use time:%lu ms\n", time_start_flash);
 	return (calculate == compare_val) ? 0 : -1;
 }
 
@@ -799,7 +799,7 @@ int compare_mtd_image_val(struct mtd_info *mtd, u64 compare_val, uint64_t image_
 
 	pr_info("get calculate value:%llx, compare calculate:%llx\n", calculate, compare_val);
 	time_start_flash = get_timer(time_start_flash);
-	pr_info("compare over, use time:%lu ms\n\n", time_start_flash);
+	pr_info("compare over, use time:%lu ms\n", time_start_flash);
 	return (calculate == compare_val) ? 0 : -1;
 }
 

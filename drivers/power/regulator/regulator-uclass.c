@@ -330,12 +330,12 @@ static void regulator_show(struct udevice *dev, int ret)
 
 	uc_pdata = dev_get_uclass_plat(dev);
 
-	pr_info("%s@%s: ", dev->name, uc_pdata->name);
+	pr_info("%s@%s:", dev->name, uc_pdata->name);
 	if (uc_pdata->flags & REGULATOR_FLAG_AUTOSET_UV)
-		pr_info("set %d uV", uc_pdata->min_uV);
+		pr_info(" set %d uV;", uc_pdata->min_uV);
 	if (uc_pdata->flags & REGULATOR_FLAG_AUTOSET_UA)
-		pr_info("; set %d uA", uc_pdata->min_uA);
-	pr_info("; enabling");
+		pr_info(" set %d uA;", uc_pdata->min_uA);
+	pr_info(" enabling");
 	if (ret)
 		pr_info(" (ret: %d)", ret);
 	pr_info("\n");
