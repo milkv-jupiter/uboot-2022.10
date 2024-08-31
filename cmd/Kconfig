@@ -943,6 +943,13 @@ config CMD_BCB
 	    https://android.googlesource.com/platform/bootable/recovery
 	  - Inspect/dump the contents of the BCB fields
 
+config CMD_BATTERY
+	bool "battery - information about batteries"
+	depends on DM_BATTERY
+	default y
+	help
+	  Provides access to information regarding batteries present on the system.
+
 config CMD_BIND
 	bool "bind/unbind - Bind or unbind a device to/from a driver"
 	depends on DM

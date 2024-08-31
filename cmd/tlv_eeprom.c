@@ -321,6 +321,7 @@ static void decode_tlv(struct tlvinfo_tlv *tlv)
 		sprintf(value, "%u", tlv->value[0]);
 		break;
 	case TLV_CODE_MAC_SIZE:
+	case TLV_CODE_DDR_DATARATE:
 		sprintf(value, "%u", (tlv->value[0] << 8) | tlv->value[1]);
 		break;
 	case TLV_CODE_VENDOR_EXT:
@@ -645,6 +646,7 @@ static bool tlvinfo_add_tlv(u8 *eeprom, int tcode, char *strval)
 		new_tlv_len = 1;
 		break;
 	case TLV_CODE_MAC_SIZE:
+	case TLV_CODE_DDR_DATARATE:
 		value = simple_strtoul(strval, NULL, 0);
 		if (value >= 65536) {
 			printf("ERROR: MAC Size must be 65535 or less. Value supplied: %u",

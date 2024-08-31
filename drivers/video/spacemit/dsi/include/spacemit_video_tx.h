@@ -160,6 +160,7 @@ struct spacemit_panel_priv {
 	struct gpio_desc bl;
 	struct gpio_desc enable;
 	struct gpio_desc reset;
+	struct udevice *backlight;
 	bool dcp_valid;
 	bool dcn_valid;
 	bool avee_valid;

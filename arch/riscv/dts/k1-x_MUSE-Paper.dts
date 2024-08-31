@@ -12,6 +12,9 @@
 
 	aliases {
 		efuse_power = &ldo_31;
+		battery = &cw2015;
+		charger = &sgm41515;
+		charger-2 = &secsgm41515;
 	};
 
 	memory@0 {
@@ -35,7 +38,6 @@
 		vbus-gpios = <&gpio 79 0>;	/* gpio_79 for usb3 pwren */
 		status = "disabled";
 	};
-
 };
 
 &cpus {
@@ -74,8 +76,27 @@
 };
 
 &i2c4 {
-	clock-frequency = <400000>;
-	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c4_2>;
+	status = "okay";
+
+	cw2015: cw2015@62 {
+		compatible = "spacemit,cw2015";
+		reg = <0x62>;
+		cellwise,battery-profile = /bits/ 8 <
+			0x17 0x67 0x73 0x69 0x68 0x65 0x64 0x55
+			0x75 0x60 0x4A 0x57 0x57 0x4E 0x42 0x3A
+			0x30 0x28 0x23 0x1E 0x23 0x35 0x46 0x4D
+			0x14 0x86 0x06 0x66 0x25 0x45 0x51 0x63
+			0x72 0x69 0x66 0x6B 0x3F 0x1B 0x78 0x39
+			0x0A 0x2F 0x1A 0x46 0x88 0x94 0x9B 0x12
+			0x3B 0x5F 0x9A 0xB6 0x80 0x57 0x7F 0xCB
+			0x2F 0x00 0x64 0xA5 0xB5 0xC1 0x46 0xAE
+		>;
+		status = "okay";
+	};
 };
 
 &i2c5 {
@@ -85,11 +106,38 @@
 };
 
 &i2c6 {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c6_0>;
+	status = "okay";
+	secsgm41515: sgm41515-2 {
+		compatible = "spacemit,sgm41515";
+		reg = <0x1a>;
+		ch-en-gpios = <&gpio 46 0>;
+		nqon-gpios = <&gpio 43 0>;
+
+		sgm41515-ichrg-uA = <1000000>;
+		sgm41515-vchrg-uV = <4350000>;
+		sgm41515-cur-input-uA = <2000000>;
+		status = "okay";
+	};
 };
 
 &i2c7 {
 	status = "disabled";
+};
+
+&i2c8 {
+	sgm41515: sgm41515 {
+		compatible = "spacemit,sgm41515";
+		reg = <0x1a>;
+		ch-en-gpios = <&gpio 117 0>;
+		nqon-gpios = <&gpio 115 0>;
+
+		sgm41515-ichrg-uA = <1000000>;
+		sgm41515-vchrg-uV = <4350000>;
+		sgm41515-cur-input-uA = <2000000>;
+		status = "okay";
+	};
 };
 
 &pinctrl {
@@ -240,6 +288,18 @@
 	};
 };
 
+&pwm14 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm14_1>;
+	status = "okay";
+};
+
+&backlight {
+	pwms = <&pwm14 0 2000>;
+	default-brightness-level = <4>;
+	status = "okay";
+};
+
 &mipi_dsi {
 	status = "okay";
 };
@@ -250,7 +310,7 @@
 	dcn-gpios = <&gpio 42 0>;
 	avee-gpios = <&gpio 35 0>;
 	avdd-gpios = <&gpio 36 0>;
-	bl-gpios = <&gpio 44 0>;
+	backlight = <&backlight>;
 	enable-gpios = <&gpio 31 0>;
 	reset-gpios = <&gpio 30 0>;
 	status = "okay";

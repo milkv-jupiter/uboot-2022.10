@@ -5,6 +5,7 @@
 
 obj-$(CONFIG_$(SPL_TPL_)ACPI_PMC) += acpi_pmc/
 obj-y += battery/
+obj-y += charger/
 obj-$(CONFIG_$(SPL_TPL_)POWER_DOMAIN) += domain/
 obj-y += fuel_gauge/
 obj-y += mfd/

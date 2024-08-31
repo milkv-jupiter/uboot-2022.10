@@ -17,7 +17,7 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/delay.h>
-
+#include <backlight.h>
 
 #define PANEL_NUM_MAX	5
 
@@ -354,13 +354,24 @@ static int lcd_bl_enable(struct video_tx_device *dev, bool enable)
 	struct lcd_mipi_tx_data  *video_tx_client =
 				video_tx_get_drvdata(dev);
 	struct spacemit_panel_priv *priv = video_tx_client->priv;
+	int ret;
 
 	if (priv->bl_valid) {
-
-		if (enable)
-			dm_gpio_set_value(&priv->bl, 1);
-		else
-			dm_gpio_set_value(&priv->bl, 0);
+		if (enable) {
+			ret = backlight_set_brightness(priv->backlight, BACKLIGHT_DEFAULT);
+			pr_debug("%s: set brightness done, ret = %d\n", __func__, ret);
+			if (ret)
+				return ret;
+			ret = backlight_enable(priv->backlight);
+			pr_debug("%s: enable backlight done, ret = %d\n", __func__, ret);
+			if (ret)
+				return ret;
+		} else {
+			ret = backlight_set_brightness(priv->backlight, BACKLIGHT_OFF);
+			pr_debug("%s: shutdown backlight done, ret = %d\n", __func__, ret);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return 0;
@@ -444,6 +455,10 @@ int lcd_mipi_probe(void)
 		tx_device_client.panel_type = LCD_MIPI;
 		tx_device.panel_type = tx_device_client.panel_type;
 		lcd_icnl9951r_init();
+	} else if(strcmp("jd9365dah3", priv->panel_name) == 0) {
+		tx_device_client.panel_type = LCD_MIPI;
+		tx_device.panel_type = tx_device_client.panel_type;
+		lcd_jd9365dah3_init();
 	} else {
 		// lcd_icnl9911c_init();
 		lcd_gx09inx101_init();
@@ -513,13 +528,14 @@ static int spacemit_panel_of_to_plat(struct udevice *dev)
 	}
 
 
-	ret = gpio_request_by_name(dev, "bl-gpios", 0, &priv->bl,
-				   GPIOD_IS_OUT);
+	ret = uclass_get_device_by_phandle(UCLASS_PANEL_BACKLIGHT, dev,
+					   "backlight", &priv->backlight);
 	if (ret) {
-		pr_debug("%s: Warning: cannot get bl GPIO: ret=%d\n",
-		      __func__, ret);
+		pr_debug("%s: Warning: cannot get backlight pwm: ret = %d\n",
+			__func__, ret);
 		priv->bl_valid = false;
 	} else {
+		pr_debug("apply for pwm successfully\n");
 		priv->bl_valid = true;
 	}
 

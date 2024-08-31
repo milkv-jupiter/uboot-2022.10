@@ -7,6 +7,7 @@
 #include <asm/global_data.h>
 #include <stdlib.h>
 #include <linux/delay.h>
+#include <tlv_eeprom.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -22,6 +23,11 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define I2C_PIN_CONFIG(x)	((x) | EDGE_NONE | PULL_UP | PAD_1V8_DS2)
 #define READ_I2C_LINE_LEN (16)
+
+int _read_from_i2c(int chip, u32 addr, u32 size, uchar *buf);
+bool _is_valid_tlvinfo_header(struct tlvinfo_header *hdr);
+
+static __section(".data") uint8_t tlv_data[256];
 
 char *spacemit_i2c_eeprom[] = {
 	"atmel,24c02",
@@ -47,24 +53,33 @@ const struct eeprom_config eeprom_info[] = {
 	{6, 0x50, MUX_MODE2, 0xd401e228, 0xd401e22c},
 };
 
-int spacemit_eeprom_read(uint8_t chip, uint8_t *buffer, uint8_t id)
+static void init_tlv_data(uint8_t chip, uint8_t *buffer, uint32_t size)
+{
+	uint32_t offset;
+	struct tlvinfo_header *hdr = (struct tlvinfo_header*)buffer;
+
+	offset = sizeof(struct tlvinfo_header);
+	_read_from_i2c(chip, 0, offset, buffer);
+	if (!_is_valid_tlvinfo_header(hdr) || ((be16_to_cpu(hdr->totallen) + offset) > size)) {
+		memset(buffer, 0, size);
+		return;
+	}
+
+	_read_from_i2c(chip, offset, be16_to_cpu(hdr->totallen), buffer + offset);
+}
+
+int spacemit_eeprom_read(uint8_t *buffer, uint8_t id)
 {
 	struct tlv_eeprom tlv;
-	int ret;
-	uint8_t buf[1] = {0};
-	uint8_t len[1] = {0};
-	uint16_t i = 0;
-	uint8_t j;
+	uint32_t i;
 
 	tlv.type = 0;
 	tlv.length = 0;
 
-	for (i = 11; i <= 256; i = i + tlv.length + 2) {
-		ret = i2c_read(chip, i, 1, buf, 1);
-		tlv.type = *buf;
-
-		ret = i2c_read(chip, i + 1, 1, len, 1);
-		tlv.length = *len;
+	for (i = sizeof(struct tlvinfo_header); i < sizeof(tlv_data);
+		i = i + tlv.length + 2) {
+		tlv.type = tlv_data[i];
+		tlv.length = tlv_data[i + 1];
 
 		if (tlv.length == 0) {
 			pr_err("Error: wrong tlv length\n");
@@ -72,10 +87,7 @@ int spacemit_eeprom_read(uint8_t chip, uint8_t *buffer, uint8_t id)
 		}
 
 		if (tlv.type == id) {
-			for(j = 0; j < tlv.length; j++) {
-				ret = i2c_read(chip, i + 2 + j, 1, (char *)buffer, 1);
-				buffer++;
-			}
+			memcpy(buffer, &tlv_data[i + 2], tlv.length);
 			return 0;
 		}
 	}
@@ -119,6 +131,7 @@ int k1x_eeprom_init(void)
 		}
 		else {
 			pr_info("find eeprom in bus %d, address %d\n", bus, saddr);
+			init_tlv_data(saddr, tlv_data, sizeof(tlv_data));
 			return saddr;
 		}
 	}

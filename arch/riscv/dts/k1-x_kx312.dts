@@ -200,6 +200,18 @@
 	};
 };
 
+&pwm14 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm14_1>;
+	status = "okay";
+};
+
+&backlight {
+	pwms = <&pwm14 0 2000>;
+	default-brightness-level = <7>;
+	status = "okay";
+};
+
 &mipi_dsi {
 	bit-clk = <933000000>;
 	pix-clk = <142000000>;
@@ -219,7 +231,7 @@
 
 &panel {
 	force-attached = "lt8911ext_edp_1080p";
-	bl-gpios = <&gpio 44 0>;
+	backlight = <&backlight>;
 	status = "okay";
 };
 

@@ -110,12 +110,6 @@ int _clear_env_part(void *download_buffer, u32 download_bytes,
 {
 	u32 boot_mode = get_boot_pin_select();
 
-	/* char cmdbuf[64] = {"\0"}; */
-	/* sprintf(cmdbuf, "env export -c -s 0x%lx 0x%lx", (ulong)CONFIG_ENV_SIZE, (ulong)download_buffer); */
-	/* if (run_command(cmdbuf, 0)){ */
-	/* 	return -1; */
-	/* } */
-
 	switch(boot_mode){
 #ifdef CONFIG_ENV_IS_IN_MMC
 	case BOOT_MODE_EMMC:
@@ -147,12 +141,6 @@ int _clear_env_part(void *download_buffer, u32 download_bytes,
 			ret = _fb_mtd_erase(mtd, CONFIG_ENV_SIZE);
 			if (ret)
 				return -1;
-
-			/*should not write env to env part*/
-			/* ret = _fb_mtd_write(mtd, download_buffer, 0, CONFIG_ENV_SIZE, NULL); */
-			/* if (ret){ */
-			/* 	pr_err("can not write env to mtd flash\n"); */
-			/* } */
 		}
 		break;
 #endif
@@ -208,7 +196,7 @@ int _write_mtd_partition(struct flash_dev *fdev)
  * @brief transfer the string of size 'K' or 'M' to u32 type.
  *
  * @param reserve_size , the string of size
- * @return int , return the transfer result.
+ * @return int , return the transfer result of KB.
  */
 int transfer_string_to_ul(const char *reserve_size)
 {
@@ -303,6 +291,7 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr)
 			const char *node_file = NULL;
 			const char *node_offset = NULL;
 			const char *node_size = NULL;
+			fdev->parts_info[part_index].hidden = false;
 
 			cJSON *arraypart = cJSON_GetArrayItem(cj_parts, i);
 			cJSON *cj_name = cJSON_GetObjectItem(arraypart, "name");
@@ -311,11 +300,20 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr)
 			else
 				node_part = "";
 
-			/*only blk dev would not add bootinfo partition*/
+			/*bootinfo should be hidden as default in gpt partition*/
 			if (!parse_mtd_partition){
 				if (strlen(node_part) > 0 && !strncmp("bootinfo", node_part, 8)){
 					pr_info("bootinfo would not add as partition\n");
-					continue;
+					fdev->parts_info[part_index].hidden = true;
+				}
+			}
+
+			cJSON *cj_hidden = cJSON_GetObjectItem(arraypart, "hidden");
+			if (cj_hidden){
+				if ((cj_hidden->type == cJSON_String && strcmp("true", cj_hidden->valuestring) == 0)
+						|| cj_hidden->type == cJSON_True){
+					printf("!!!! patr name:%s would set to hidden part !!!!\n", node_part);
+					fdev->parts_info[part_index].hidden = true;
 				}
 			}
 
@@ -374,19 +372,26 @@ int _parse_flash_config(struct flash_dev *fdev, void *load_flash_addr)
 			if (off > 0)
 				combine_size = off;
 
+			/*TODO: support hidden partition for mtd dev*/
 			if (parse_mtd_partition){
 				/*parse mtd partition*/
 				if (strlen(combine_str) == 0)
 					sprintf(combine_str, "%s%s@%dK(%s)", combine_str, node_size, combine_size, node_part);
 				else
 					sprintf(combine_str, "%s,%s@%dK(%s)", combine_str, node_size, combine_size, node_part);
-			}else if (fdev->gptinfo.fastboot_flash_gpt){
+			}else if (!fdev->parts_info[part_index].hidden && fdev->gptinfo.fastboot_flash_gpt){
 				/*parse gpt partition*/
 				if (strlen(node_offset) == 0)
 					sprintf(combine_str, "%sname=%s,size=%s;", combine_str, node_part, node_size);
 				else
 					sprintf(combine_str, "%sname=%s,start=%s,size=%s;", combine_str, node_part, node_offset, node_size);
 			}
+
+			/*save part offset and size to byte*/
+			fdev->parts_info[part_index].part_offset = combine_size * 1024;
+			fdev->parts_info[part_index].part_size = transfer_string_to_ul(node_size) * 1024;
+
+			/*save as the next part offset*/
 			combine_size += transfer_string_to_ul(node_size);
 
 			/*after finish recovery, it would free the malloc paramenter at func recovery_show_result*/
@@ -885,6 +890,7 @@ const struct oem_config_info config_info[] = {
 	{ "manufacturer", TLV_CODE_MANUF_NAME, 32, NULL },
 	{ "sdk_version", TLV_CODE_SDK_VERSION, 3, NULL},
 	{ "ddr_cs_num", TLV_CODE_DDR_CSNUM, 3, NULL},
+	{ "ddr_datarate", TLV_CODE_DDR_DATARATE, 5, NULL},
 	{ "ddr_type", TLV_CODE_DDR_TYPE, 32, NULL},
 	{ "pmic_type", TLV_CODE_PMIC_TYPE, 3, NULL},
 	{ "eeprom_i2c_index", TLV_CODE_EEPROM_I2C_INDEX, 3, NULL},

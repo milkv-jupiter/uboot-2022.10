@@ -46,15 +46,27 @@ configure)
             fi
             ;;
         "/dev/nvme0n1"*)
-            BOOTINFO_FILE=bootinfo_spinor.bin
-            BOOTINFO=/dev/mtdblock0
-            FSBL=/dev/mtdblock0
-            FSBL_SEEK=$((128 * 1024))
-            ENV=/dev/mtdblock0
-            ENV_SEEK=$((384 * 1024))
-            UBOOT=/dev/mtdblock0
-            # 以KB为单位
-            UBOOT_SEEK=640
+            if [ ! -e "/dev/mtdblock5" ]; then
+                BOOTINFO_FILE=bootinfo_spinor.bin
+                BOOTINFO=/dev/mtdblock0
+                FSBL=/dev/mtdblock0
+                FSBL_SEEK=$((128 * 1024))
+                ENV=/dev/mtdblock0
+                ENV_SEEK=$((384 * 1024))
+                UBOOT=/dev/mtdblock0
+                # 以KB为单位
+                UBOOT_SEEK=640
+            else
+                BOOTINFO_FILE=bootinfo_spinor.bin
+                BOOTINFO=/dev/mtdblock0
+                FSBL=/dev/mtdblock2
+                FSBL_SEEK=0
+                ENV=/dev/mtdblock3
+                ENV_SEEK=0
+                UBOOT=/dev/mtdblock5
+                # 以KB为单位
+                UBOOT_SEEK=0
+            fi
             ;;
         *)
             echo "Unsupported root=$ROOT"
@@ -78,11 +90,12 @@ configure)
     done
 
     # 此前已经做了所有检查
+    set -x
     dd if=/usr/lib/u-boot/$target/$BOOTINFO_FILE of=$BOOTINFO && sync
     dd if=/usr/lib/u-boot/$target/FSBL.bin of=$FSBL seek=$FSBL_SEEK bs=1 && sync
     dd if=/usr/lib/u-boot/$target/env.bin of=$ENV seek=$ENV_SEEK bs=1 && sync
     dd if=/usr/lib/u-boot/$target/u-boot.itb of=$UBOOT seek=$UBOOT_SEEK bs=1K && sync
-
+    set +x
     ;;
 esac
 

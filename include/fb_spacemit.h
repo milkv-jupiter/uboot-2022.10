@@ -58,8 +58,16 @@ struct flash_volume_image {
 struct flash_parts_info {
 	char *part_name;
 	char *file_name;
-	/*partition size info, such as 128MiB*/
+
+	/*partition offset info*/
+	u64 part_offset;
+
+	/*partition size info*/
+	u64 part_size;
+
+	/*save partition size to string*/
 	char *size;
+
 	/*use for fsbl, if hidden that gpt would reserve a raw memeory
 	  for fsbl and the partition is not available.
 	*/

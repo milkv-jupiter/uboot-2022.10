@@ -528,6 +528,8 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 	static char __maybe_unused part_name_t[20] = "";
 	unsigned long __maybe_unused src_len = ~0UL;
 	bool gzip_image = false;
+	bool is_hidden_part = false;
+	int part_index = 0;
 
 	if (fdev == NULL){
 		fdev = malloc(sizeof(struct flash_dev));
@@ -656,6 +658,30 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 		strlcpy((char *)&info.name, cmd, sizeof(info.name));
 		info.size	= dev_desc->lba;
 		info.blksz	= dev_desc->blksz;
+	}
+#endif
+
+#ifdef CONFIG_SPACEMIT_FLASH
+	for (part_index = 0; part_index < MAX_PARTITION_NUM; part_index++){
+		if (fdev->parts_info[part_index].part_name != NULL
+				&& strcmp(cmd, fdev->parts_info[part_index].part_name) == 0){
+			if (fdev->parts_info[part_index].hidden)
+				is_hidden_part = true;
+			break;
+		}
+	}
+
+	if (is_hidden_part){
+		/*find available blk dev*/
+		dev_desc = fastboot_mmc_get_dev(response);
+		if (!dev_desc)
+			return;
+
+		strlcpy((char *)&info.name, cmd, sizeof(info.name));
+		info.size	= fdev->parts_info[part_index].part_size / dev_desc->blksz;
+		info.start = fdev->parts_info[part_index].part_offset / dev_desc->blksz;
+		info.blksz	= dev_desc->blksz;
+		printf("!!! flash image to hidden partition !!!\n");
 	}
 #endif
 

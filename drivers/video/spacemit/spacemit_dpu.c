@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <display.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <dm/uclass.h>
 #include <dm/device.h>
@@ -306,12 +307,15 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 			return ret;
 		}
 
-		hdmi_dpu_init(&hdmi_1080p_modeinfo, fbbase);
-
 		uc_priv->xsize = 1920;
 		uc_priv->ysize = 1080;
 
-		pr_info("fb=%lx, size=%d %d\n", fbbase, uc_priv->xsize, uc_priv->ysize);
+		pr_info("fb=%lx, size=%dx%d\n", fbbase, uc_priv->xsize, uc_priv->ysize);
+
+		memset((void *)fbbase, 0, uc_priv->xsize * uc_priv->ysize * VNBYTES(uc_priv->bpix));
+		flush_cache(fbbase, uc_priv->xsize * uc_priv->ysize * VNBYTES(uc_priv->bpix));
+
+		hdmi_dpu_init(&hdmi_1080p_modeinfo, fbbase);
 
 		return 0;
 	} else if (dpu_id == DPU_MODE_MIPI) {
@@ -356,6 +360,11 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 		uc_priv->xsize = spacemit_mode->xres;
 		uc_priv->ysize = spacemit_mode->yres;
 
+		pr_info("fb=%lx, size=%dx%d\n", fbbase, uc_priv->xsize, uc_priv->ysize);
+
+		memset((void *)fbbase, 0, uc_priv->xsize * uc_priv->ysize * VNBYTES(uc_priv->bpix));
+		flush_cache(fbbase, uc_priv->xsize * uc_priv->ysize * VNBYTES(uc_priv->bpix));
+
 		pr_debug("%s: panel type %d\n", __func__, fbi.tx->panel_type);
 
 		if (fbi.tx->panel_type == LCD_MIPI) {
@@ -392,8 +401,6 @@ static int spacemit_display_init(struct udevice *dev, ulong fbbase, ofnode ep_no
 		} else {
 			pr_info("%s: Failed to find panel\n", __func__);
 		}
-
-		pr_info("fb=%lx, size=%d %d\n", fbbase, uc_priv->xsize, uc_priv->ysize);
 
 		return 0;
 	}

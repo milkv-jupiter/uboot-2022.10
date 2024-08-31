@@ -23,6 +23,7 @@ obj-$(CONFIG_CMD_BOOTDEV) += bootdev.o
 obj-$(CONFIG_CMD_BOOTFLOW) += bootflow.o
 obj-$(CONFIG_CMD_BOOTMETH) += bootmeth.o
 obj-$(CONFIG_CMD_SOURCE) += source.o
+obj-$(CONFIG_CMD_BATTERY) += battery.o
 obj-$(CONFIG_CMD_BCB) += bcb.o
 obj-$(CONFIG_CMD_BDI) += bdinfo.o
 obj-$(CONFIG_CMD_BIND) += bind.o

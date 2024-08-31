@@ -96,7 +96,6 @@ static int pxa_pwm_set_enable(struct udevice *dev, uint channel, bool enable)
 	struct pxa_pwm_priv *priv = dev_get_priv(dev);
 
 	if (enable) {
-		printf("!!!!!!!!!!!!!!!!!!\n");
 		return clk_enable(&priv->clk);
 	}
 	else
@@ -146,7 +145,7 @@ static const struct udevice_id pxa_pwm_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(mtk_pwm) = {
+U_BOOT_DRIVER(spacemit_pwm) = {
 	.name = "pxa_pwm",
 	.id = UCLASS_PWM,
 	.of_match = pxa_pwm_ids,

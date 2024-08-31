@@ -29,6 +29,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define PCIE_VENDORID_MASK	GENMASK(15, 0)
 #define PCIE_DEVICEID_SHIFT	16
+#define K1X_PCIE_VENDOR_ID	0x201F
+#define k1X_PCIE_DEVICE_ID	0x0001
 
 #define PCIE_LINK_CAPABILITY		0x7c
 #define PCIE_LINK_CTL_2			0xa0
@@ -629,6 +631,16 @@ static int init_phy(struct pcie_dw_k1x *k1x)
 	return 0;
 }
 
+static int pcie_dw_init_id(struct pcie_dw_k1x *pci)
+{
+	dw_pcie_dbi_write_enable(&pci->dw, true);
+	writew(K1X_PCIE_VENDOR_ID, pci->dw.dbi_base + PCI_VENDOR_ID);
+	writew(k1X_PCIE_DEVICE_ID, pci->dw.dbi_base + PCI_DEVICE_ID);
+	dw_pcie_dbi_write_enable(&pci->dw, false);
+
+	return 0;
+}
+
 /**
  * pcie_dw_k1x_probe() - Probe the PCIe bus for active link
  *
@@ -647,8 +659,6 @@ static int pcie_dw_k1x_probe(struct udevice *dev)
 	struct phy phy0, phy1;
 	int ret;
 	u32 reg;
-
-	printf("%s, %d\n", __FUNCTION__, __LINE__);
 
 	/* enable pcie clk */
 	clk_enable(&pci->clock);
@@ -690,6 +700,7 @@ static int pcie_dw_k1x_probe(struct udevice *dev)
 
 	k1x_pcie_host_init(pci);
 	pcie_dw_setup_host(&pci->dw);
+	pcie_dw_init_id(pci);
 
 	if (!pcie_dw_k1x_pcie_link_up(pci, LINK_SPEED_GEN_2)) {
 		printf("PCIE-%d: Link down\n", dev_seq(dev));

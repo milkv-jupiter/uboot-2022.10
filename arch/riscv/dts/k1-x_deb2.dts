@@ -256,6 +256,18 @@
 	status = "okay";
 };
 
+&pwm14 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm14_1>;
+	status = "disabled";
+};
+
+&backlight {
+	pwms = <&pwm14 0 2000>;
+	default-brightness-level = <6>;
+	status = "disabled";
+};
+
 &mipi_dsi {
 	status = "disabled";
 };
@@ -263,7 +275,7 @@
 &panel {
 	dcp-gpios = <&gpio 82 0>;
 	dcn-gpios = <&gpio 83 0>;
-	bl-gpios = <&gpio 44 0>;
+	backlight = <&backlight>; 
 	reset-gpios = <&gpio 81 0>;
 	status = "disabled";
 };

@@ -1,0 +1,11 @@
+config DM_BATTERY
+	bool "Enable Driver Model for BATTERY drivers (UCLASS_BATTERY)"
+	depends on DM
+	---help---
+	This config enables driver model battery support.
+
+config CW2015_BATTERY
+	bool "Enable Driver Model for SPACEMIT CW2015 battery"
+	depends on DM_BATTERY
+	help
+	This config enables driver model for cw2015 battery

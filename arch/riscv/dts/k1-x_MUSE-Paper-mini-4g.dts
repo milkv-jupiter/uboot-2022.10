@@ -235,3 +235,37 @@
 			regulator-off-in-suspend;
 	};
 };
+
+&dpu {
+	status = "okay";
+};
+
+&pwm14 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm14_1>;
+	status = "okay";
+};
+
+&backlight {
+	pwms = <&pwm14 0 2000>;
+	default-brightness-level = <6>;
+	status = "okay";
+};
+
+&mipi_dsi {
+	bit-clk = <614400000>;
+	pix-clk = <76800000>;
+	status = "okay";
+};
+
+&panel {
+	force-attached = "jd9365dah3";
+	dcp-gpios = <&gpio 34 0>;
+	dcn-gpios = <&gpio 42 0>;
+	avee-gpios = <&gpio 35 0>;
+	avdd-gpios = <&gpio 36 0>;
+	backlight = <&backlight>;
+	enable-gpios = <&gpio 31 0>;
+	reset-gpios = <&gpio 30 0>;
+	status = "okay";
+};

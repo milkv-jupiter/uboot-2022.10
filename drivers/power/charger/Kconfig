@@ -1,0 +1,11 @@
+config DM_CHARGER
+	bool "Enable Driver Model for charger drivers (UCLASS_CHARGER)"
+	depends on DM
+	---help---
+	This config enables driver model charger support.
+
+config SGM41515_CHARGER
+	bool "Enable Driver Model for SPACEMIT sgm41515 charger"
+	depends on DM_CHARGER
+	help
+	This config enables driver model for sgm41515 charger.

@@ -236,6 +236,18 @@
 	};
 };
 
+&pwm1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm1_2>;
+	status = "disabled";
+};
+
+&backlight {
+	pwms = <&pwm1 0 2000>;
+	default-brightness-level = <6>;
+	status = "disabled";
+};
+
 &mipi_dsi {
 	status = "disabled";
 };

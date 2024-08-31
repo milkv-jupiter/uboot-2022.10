@@ -37,6 +37,8 @@ enum uclass_id {
 	UCLASS_AUDIO_CODEC,	/* Audio codec with control and data path */
 	UCLASS_AXI,		/* AXI bus */
 	UCLASS_BLK,		/* Block device */
+	UCLASS_BATTERY,		/* Battery */
+	UCLASS_CHARGER,		/* Charger */
 	UCLASS_BOOTCOUNT,       /* Bootcount backing store */
 	UCLASS_BOOTDEV,		/* Boot device for locating an OS to boot */
 	UCLASS_BOOTMETH,	/* Bootmethod for booting an OS */

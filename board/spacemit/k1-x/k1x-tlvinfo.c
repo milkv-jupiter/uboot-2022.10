@@ -38,7 +38,7 @@ static bool had_read_tlvinfo = false;
  *         to the allowed maximum (2048-11)
  *
  */
-static bool _is_valid_tlvinfo_header(struct tlvinfo_header *hdr)
+bool _is_valid_tlvinfo_header(struct tlvinfo_header *hdr)
 {
 	return ((strcmp(hdr->signature, TLV_INFO_ID_STRING) == 0) &&
 		(hdr->version == TLV_INFO_VERSION) &&

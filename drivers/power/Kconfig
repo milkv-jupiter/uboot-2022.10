@@ -51,6 +51,10 @@ source "drivers/power/pmic/Kconfig"
 
 source "drivers/power/regulator/Kconfig"
 
+source "drivers/power/battery/Kconfig"
+
+source "drivers/power/charger/Kconfig"
+
 choice
 	prompt "Select Sunxi PMIC Variant"
 	depends on ARCH_SUNXI
