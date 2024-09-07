@@ -14,6 +14,7 @@
 #include <asm/global_data.h>
 #include <dm/device-internal.h>
 #include "sf_internal.h"
+#include <blk.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -104,9 +105,44 @@ static int spi_flash_post_bind(struct udevice *dev)
 	return 0;
 }
 
+#ifdef CONFIG_SPINOR_BLOCK_SUPPORT
+int spacemit_spinor_post_probe(struct udevice *dev)
+{
+	struct blk_desc *bdesc;
+	struct udevice *bdev;
+	int ret;
+	struct udevice *parent_dev = dev->parent;
+
+	// Create the block device interface for the SPI NOR device with the same parent as dev
+	ret = blk_create_devicef(parent_dev, "nor_blk", "blk", IF_TYPE_NOR,
+							 dev_seq(dev), SPI_NOR_BLOCK_SIZE, 0, &bdev);
+	if (ret) {
+		pr_err("Cannot create block device\n");
+		return ret;
+	}
+
+	// Obtain the block device descriptor
+	bdesc = dev_get_uclass_plat(bdev);
+	if (!bdesc) {
+		pr_err("Failed to get block device descriptor\n");
+		return -ENODEV;
+	}
+
+	// Initialize block device descriptor
+	bdesc->if_type = IF_TYPE_NOR;
+	bdesc->removable = 0;
+
+	dev_set_priv(bdev, dev);
+	return 0;
+}
+#endif /* CONFIG_SPINOR_BLOCK_SUPPORT */
+
 UCLASS_DRIVER(spi_flash) = {
 	.id		= UCLASS_SPI_FLASH,
 	.name		= "spi_flash",
 	.post_bind	= spi_flash_post_bind,
+#ifdef CONFIG_SPINOR_BLOCK_SUPPORT
+	.post_probe	= spacemit_spinor_post_probe,
+#endif /* CONFIG_SPINOR_BLOCK_SUPPORT */
 	.per_device_auto	= sizeof(struct spi_nor),
 };

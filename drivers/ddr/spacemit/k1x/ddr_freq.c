@@ -116,7 +116,7 @@ static u32 mode_register_read(u32 MR, u32 CH, u32 CS)
 		read_data = readl((void __iomem*)DDR_MR_DATA);
 	}
 
-	UI3 = readl((void __iomem*)(DDR_BASE + 0x234)) & 0xFF;
+	UI3 = readl((void __iomem*)(DDR_BASE + 0x370)) & 0xFF;
 	return UI3;
 }
 
